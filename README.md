@@ -98,32 +98,40 @@ print(result.generate_report())
 ```text
 Recent studies have shown significant results (Smith, 2020). Multiple
 researchers agree (Johnson et al., 2021; Williams, 2019). However, some
-findings remain controversial [3].
+findings remain controversial [3]. Early work by Garcia (2022) established
+the foundation.
 
 References:
 Smith, J. (2020). A Study on Citations. Journal of Research, 15(2), 120-135.
 Johnson, M., Lee, K., & Chen, R. (2021). Advanced Methods. Science Press.
 Williams, A. (2019). Research Methodology. Academic Publishers.
 Brown, T. (2018). Uncited Work. University Press.
+Garcia, P. (2023). Foundation Work. Research Quarterly, 12(1), 45-67.
 ```
 
 ### Output Report
 
 ```
 Citation Cross-Checker Report
-========================================
+============================================================
 
 MISSING BIBLIOGRAPHY ENTRIES:
 ✗ Citation '[3]' found in text but missing from bibliography
 
 UNCITED REFERENCES:
-✗ 'Brown, T. (2018)' in bibliography but never cited in text
+✗ 'Brown, 2018' in bibliography but never cited in text
+
+POTENTIAL YEAR MISMATCHES:
+(Same authors cited and in bibliography, but with different years)
+  ⚠  Citation: (Garcia, 2022) (year: 2022)
+      Bibliography: Garcia, 2023 (year: 2023)
 
 SUMMARY:
-Total in-text citations: 4
-Total bibliography entries: 4
+Total in-text citations: 5
+Total bibliography entries: 5
 Missing bibliography entries: 1
 Uncited references: 1
+Potential year mismatches: 1
 
 Status: INCONSISTENCIES FOUND
 ```
