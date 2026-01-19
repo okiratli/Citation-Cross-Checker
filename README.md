@@ -4,6 +4,7 @@ A powerful tool that scans your manuscript drafts to ensure all in-text citation
 
 ## Features
 
+- **🖥️ GUI Application**: Easy-to-use graphical interface for Windows (and cross-platform)
 - **Multi-Format Support**: Handles APA, Harvard, Chicago, MLA, IEEE, and numeric citation styles
 - **Bidirectional Checking**: Verifies citations have bibliography entries AND bibliography entries are cited
 - **Detailed Reports**: Clear, color-coded output showing all inconsistencies
@@ -11,6 +12,7 @@ A powerful tool that scans your manuscript drafts to ensure all in-text citation
 - **Format Detection**: Automatically detects citation style from your document
 - **Flexible Input**: Works with plain text, Markdown, LaTeX, and **Word (.docx)** files
 - **Robust Parsing**: Correctly handles various bibliography formats including "LastName, FirstName" entries
+- **Standalone .exe**: Can be packaged as a Windows executable (no Python required for end users)
 
 ## Installation
 
@@ -27,6 +29,29 @@ pip install -r requirements.txt
 ```
 
 ## Usage
+
+### GUI Application (Recommended for Windows Users)
+
+The easiest way to use Citation Cross-Checker is through the graphical interface:
+
+#### Quick Start:
+```bash
+# After installation, simply run:
+citation-checker-gui
+
+# Or double-click (Windows):
+launch_gui.bat
+```
+
+#### GUI Features:
+- 📁 **Browse** to select your manuscript file (.txt, .md, .docx)
+- ⚙️ **Configure** optional bibliography section name
+- ▶️ **Click "Check Citations"** to run the analysis
+- 📊 **View** color-coded results instantly
+- 💾 **Save** report to a text file
+
+#### Creating a Windows Executable:
+See [BUILD_WINDOWS_EXE.md](BUILD_WINDOWS_EXE.md) for instructions to create a standalone `.exe` file that can be distributed to users without Python installed.
 
 ### Command Line
 

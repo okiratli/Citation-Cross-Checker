@@ -34,6 +34,7 @@ dev = [
 
 [project.scripts]
 citation-checker = "citation_cross_checker.cli:main"
+citation-checker-gui = "citation_cross_checker.gui:main"
 
 [tool.setuptools]
 packages = ["citation_cross_checker"]
