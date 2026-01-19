@@ -181,7 +181,7 @@ Supports:
 • Bidirectional citation checking
 • Year mismatch detection
 
-© 2024 Osman Sabri Kiratli
+© 2026 Osman Sabri Kiratli
 Licensed under MIT License
 
 GitHub: https://github.com/okiratli/abc
