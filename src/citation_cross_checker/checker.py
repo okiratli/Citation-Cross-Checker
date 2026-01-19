@@ -83,6 +83,7 @@ class CitationChecker:
     ) -> list[Citation]:
         """Find citations that don't have matching bibliography entries."""
         missing = []
+        seen_citations = set()
 
         for citation in citations:
             # Check if this citation matches any bibliography entry
@@ -93,7 +94,18 @@ class CitationChecker:
                     break
 
             if not has_match:
-                missing.append(citation)
+                # Create a unique key to avoid duplicates
+                # Use authors and year to identify unique citations
+                if citation.citation_type == "numeric":
+                    citation_key = f"[{citation.number}]"
+                else:
+                    authors_key = ",".join(sorted(citation.authors)) if citation.authors else ""
+                    citation_key = f"{authors_key}:{citation.year}"
+
+                # Only add if we haven't seen this citation before
+                if citation_key not in seen_citations:
+                    missing.append(citation)
+                    seen_citations.add(citation_key)
 
         return missing
 

@@ -14,7 +14,7 @@ class Citation:
     page: Optional[str] = None
     number: Optional[int] = None  # For numeric citations like [1]
     position: int = 0  # Character position in document
-    citation_type: str = "unknown"  # apa, mla, ieee, numeric
+    citation_type: str = "unknown"  # author-year, mla, numeric, ieee
 
     def __str__(self):
         return self.raw_text
@@ -24,7 +24,7 @@ class Citation:
         if self.citation_type == "numeric" or self.citation_type == "ieee":
             return self.number == bib_entry.number
 
-        # For author-year citations (APA, MLA)
+        # For author-year citations (APA, Harvard, Chicago, MLA)
         if not self.authors or not bib_entry.authors:
             return False
 
@@ -95,7 +95,7 @@ class BibEntry:
     title: Optional[str] = None
     number: Optional[int] = None  # For numbered references like [1]
     position: int = 0  # Line number in bibliography
-    entry_type: str = "unknown"  # apa, mla, ieee, numeric
+    entry_type: str = "unknown"  # author-year, mla, numeric, ieee
 
     def __str__(self):
         return self.raw_text

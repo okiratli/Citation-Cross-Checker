@@ -4,9 +4,10 @@ A powerful tool that scans your manuscript drafts to ensure all in-text citation
 
 ## Features
 
-- **Multi-Format Support**: Handles APA, MLA, IEEE, and numeric citation styles
+- **Multi-Format Support**: Handles APA, Harvard, Chicago, MLA, IEEE, and numeric citation styles
 - **Bidirectional Checking**: Verifies citations have bibliography entries AND bibliography entries are cited
 - **Detailed Reports**: Clear, color-coded output showing all inconsistencies
+- **Year Mismatch Detection**: Identifies potential year mismatches (e.g., online-first vs. final publication)
 - **Format Detection**: Automatically detects citation style from your document
 - **Flexible Input**: Works with plain text, Markdown, LaTeX, and **Word (.docx)** files
 - **Robust Parsing**: Correctly handles various bibliography formats including "LastName, FirstName" entries
@@ -71,8 +72,16 @@ print(result.generate_report())
 ## Supported Citation Formats
 
 ### APA Style
-- In-text: `(Author, Year)`, `(Author et al., Year)`
+- In-text: `(Author, Year)`, `(Author et al., Year)`, `Author (Year)`
 - Bibliography: `Author, A. (Year). Title...`
+
+### Harvard Style
+- In-text: `(Author Year)`, `(Author, Year)`, `Author (Year)`
+- Bibliography: `Author, A. Year. Title...`
+
+### Chicago Author-Date Style
+- In-text: `(Author Year)`, `(Author, Year)`, `Author (Year)`
+- Bibliography: `Author, First. Year. Title...`
 
 ### MLA Style
 - In-text: `(Author Page)`, `(Author et al. Page)`

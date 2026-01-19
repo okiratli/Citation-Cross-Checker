@@ -8,8 +8,9 @@ from .models import Citation, BibEntry
 class CitationParser:
     """Parses in-text citations from manuscript text."""
 
-    # APA style: (Author, Year) or (Author et al., Year)
-    APA_PATTERN = r'\(([A-Z][a-zA-Z\s&,]+(?:\set\sal\.)?),\s*(\d{4}[a-z]?)\)'
+    # Author-year styles: APA, Harvard, Chicago
+    # Patterns: (Author, Year), (Author Year), (Author et al., Year)
+    AUTHOR_YEAR_PATTERN = r'\(([A-Z][a-zA-Z\s&,]+(?:\set\sal\.)?),\s*(\d{4}[a-z]?)\)'
 
     # MLA style: (Author Page) or (Author et al. Page)
     MLA_PATTERN = r'\(([A-Z][a-zA-Z\s&]+(?:\set\sal\.)?)\s+(\d+(?:-\d+)?)\)'
@@ -21,8 +22,9 @@ class CitationParser:
         """Parse all citations from text."""
         citations = []
 
-        # Parse APA citations - including multiple citations in one set of parentheses
-        # Pattern: (Author1, Year1; Author2, Year2) or (Author1, Year1) or (Author et al., Year)
+        # Parse author-year citations (APA, Harvard, Chicago)
+        # Including multiple citations in one set of parentheses
+        # Patterns: (Author, Year), (Author Year), (Author1, Year1; Author2, Year2)
         multi_cite_pattern = r'\(([^()]+)\)'
         for match in re.finditer(multi_cite_pattern, text):
             content = match.group(1)
@@ -33,6 +35,7 @@ class CitationParser:
                 for part in parts:
                     part = part.strip()
                     # Extract author and year from each part
+                    # Comma is optional to support both APA (Author, Year) and Harvard/Chicago (Author Year)
                     cite_match = re.search(r'([A-Z][a-zA-Z\s&,]+(?:\set\sal\.)?),?\s*(\d{4}[a-z]?)', part)
                     if cite_match:
                         authors_str = cite_match.group(1).strip()
@@ -44,11 +47,12 @@ class CitationParser:
                             authors=authors,
                             year=year,
                             position=match.start(),
-                            citation_type="apa"
+                            citation_type="author-year"
                         )
                         citations.append(citation)
 
         # Parse narrative citations (Author (Year))
+        # Used in APA, Harvard, and Chicago styles
         # Pattern: "Brown (2018)" or "Smith and Jones (2020)"
         narrative_pattern = r'([A-Z][a-zA-Z\'\-]+(?:\s+(?:and|&)\s+[A-Z][a-zA-Z\'\-]+)?)\s+\((\d{4}[a-z]?)\)'
         for match in re.finditer(narrative_pattern, text):
@@ -61,7 +65,7 @@ class CitationParser:
                 authors=authors,
                 year=year,
                 position=match.start(),
-                citation_type="apa"
+                citation_type="author-year"
             )
             citations.append(citation)
 
@@ -276,8 +280,8 @@ class BibliographyParser:
         if not authors:
             return None
 
-        # Determine if APA or MLA based on format
-        entry_type = "apa" if re.search(r'\(\d{4}\)', entry_text) else "mla"
+        # Determine if author-year (APA/Harvard/Chicago) or MLA based on format
+        entry_type = "author-year" if re.search(r'\(\d{4}\)', entry_text) else "mla"
 
         return BibEntry(
             raw_text=entry_text,
