@@ -31,8 +31,168 @@ class CitationCheckerGUI:
         style = ttk.Style()
         style.theme_use('clam')
 
+    def create_menu(self):
+        """Create menu bar."""
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+
+        # Help menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="View README", command=self.show_readme)
+        help_menu.add_separator()
+        help_menu.add_command(label="About", command=self.show_about)
+
+    def show_readme(self):
+        """Show README content in a new window."""
+        readme_window = tk.Toplevel(self.root)
+        readme_window.title("README - Citation Cross-Checker")
+        readme_window.geometry("800x600")
+
+        # Create scrolled text widget
+        text_widget = scrolledtext.ScrolledText(
+            readme_window,
+            wrap=tk.WORD,
+            width=80,
+            height=30,
+            font=('Courier', 10)
+        )
+        text_widget.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Try to load README.md from package directory
+        readme_content = self.get_readme_content()
+        text_widget.insert(tk.END, readme_content)
+        text_widget.config(state='disabled')  # Make read-only
+
+    def get_readme_content(self):
+        """Get README content from file or return default text."""
+        try:
+            # Try to find README.md in various locations
+            possible_paths = [
+                Path(__file__).parent.parent.parent.parent / "README.md",
+                Path.cwd() / "README.md",
+            ]
+
+            for path in possible_paths:
+                if path.exists():
+                    with open(path, 'r', encoding='utf-8') as f:
+                        return f.read()
+
+            # If README not found, return embedded content
+            return self.get_embedded_readme()
+
+        except Exception as e:
+            return f"Error loading README: {str(e)}\n\nPlease visit the GitHub repository for documentation."
+
+    def get_embedded_readme(self):
+        """Return embedded README content."""
+        return """# Citation Cross-Checker
+
+A powerful tool that scans your manuscript drafts to ensure all in-text citations
+match your bibliography and vice versa, flagging any inconsistencies.
+
+Created by: Osman Sabri Kiratli
+
+## Features
+
+- Multi-Format Support: APA, Harvard, Chicago, MLA, IEEE, and numeric citations
+- Bidirectional Checking: Verifies citations have bibliography entries AND vice versa
+- Year Mismatch Detection: Identifies potential year mismatches (online-first publications)
+- Word Document Support: Works with .txt, .md, and .docx files
+- GUI Application: Easy-to-use graphical interface
+
+## Supported Citation Formats
+
+### APA Style
+- In-text: (Author, Year), (Author et al., Year), Author (Year)
+- Bibliography: Author, A. (Year). Title...
+
+### Harvard Style
+- In-text: (Author Year), Author (Year)
+- Bibliography: Author, A. Year. Title...
+
+### Chicago Style
+- In-text: (Author Year), Author (Year)
+- Bibliography: Author, First. Year. Title...
+
+### MLA Style
+- In-text: (Author Page)
+- Bibliography: Author, First. "Title"...
+
+### IEEE/Numeric
+- In-text: [1], [1-3], [1,2,5]
+- Bibliography: [1] Author, "Title"...
+
+## How to Use
+
+1. Click "Browse..." to select your manuscript file
+2. (Optional) Enter bibliography section name if different from "References"
+3. Click "Check Citations" to run the analysis
+4. Review color-coded results:
+   - RED: Missing bibliography entries
+   - YELLOW: Uncited references
+   - BLUE: Potential year mismatches
+   - GREEN: Success messages
+5. Click "Save Report" to export results (optional)
+
+## Understanding Results
+
+### Missing Bibliography Entries
+Citations found in your text that don't have matching bibliography entries.
+Action: Add these references to your bibliography.
+
+### Uncited References
+Bibliography entries that are never cited in your text.
+Action: Either cite them or remove from bibliography.
+
+### Potential Year Mismatches
+Same authors cited with different years (common with online-first publications).
+Action: Update the year to match final publication.
+
+## Tips
+
+- Use standard citation formats for best results
+- Label your bibliography section clearly
+- Run the checker before submitting manuscripts
+- All processing is done locally - your documents remain private
+
+## License
+
+MIT License
+
+Created by: Osman Sabri Kiratli
+GitHub: https://github.com/okiratli/abc
+
+For more information, visit the GitHub repository.
+"""
+
+    def show_about(self):
+        """Show about dialog."""
+        about_text = """Citation Cross-Checker
+Version 1.0.0
+
+A powerful tool for checking citation consistency in academic manuscripts.
+
+Created by: Osman Sabri Kiratli
+
+Supports:
+• APA, Harvard, Chicago, MLA, IEEE citation styles
+• Word documents (.docx), text files (.txt, .md)
+• Bidirectional citation checking
+• Year mismatch detection
+
+© 2024 Osman Sabri Kiratli
+Licensed under MIT License
+
+GitHub: https://github.com/okiratli/abc
+"""
+        messagebox.showinfo("About Citation Cross-Checker", about_text)
+
     def create_widgets(self):
         """Create all GUI widgets."""
+        # Create menu bar
+        self.create_menu()
+
         # Main container
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))

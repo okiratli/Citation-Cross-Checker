@@ -21,6 +21,7 @@ class CitationParser:
     def parse(self, text: str) -> List[Citation]:
         """Parse all citations from text."""
         citations = []
+        parsed_positions = set()  # Track positions to avoid duplicates
 
         # Parse author-year citations (APA, Harvard, Chicago)
         # Including multiple citations in one set of parentheses
@@ -50,12 +51,17 @@ class CitationParser:
                             citation_type="author-year"
                         )
                         citations.append(citation)
+                        parsed_positions.add((match.start(), match.end()))
 
         # Parse narrative citations (Author (Year))
         # Used in APA, Harvard, and Chicago styles
         # Pattern: "Brown (2018)" or "Smith and Jones (2020)"
         narrative_pattern = r'([A-Z][a-zA-Z\'\-]+(?:\s+(?:and|&)\s+[A-Z][a-zA-Z\'\-]+)?)\s+\((\d{4}[a-z]?)\)'
         for match in re.finditer(narrative_pattern, text):
+            # Skip if already parsed
+            if any(start <= match.start() < end for start, end in parsed_positions):
+                continue
+
             authors_str = match.group(1).strip()
             year = match.group(2).strip()
             authors = self._parse_authors(authors_str)
@@ -68,11 +74,21 @@ class CitationParser:
                 citation_type="author-year"
             )
             citations.append(citation)
+            parsed_positions.add((match.start(), match.end()))
 
-        # Parse MLA citations
+        # Parse MLA citations - only if not already parsed as author-year
         for match in re.finditer(self.MLA_PATTERN, text):
+            # Skip if already parsed
+            if any(start <= match.start() < end for start, end in parsed_positions):
+                continue
+
             authors_str = match.group(1).strip()
             page = match.group(2).strip()
+
+            # Skip if the "page" is actually a 4-digit year
+            if len(page) == 4 and page.isdigit():
+                continue
+
             authors = self._parse_authors(authors_str)
 
             citation = Citation(
@@ -83,9 +99,14 @@ class CitationParser:
                 citation_type="mla"
             )
             citations.append(citation)
+            parsed_positions.add((match.start(), match.end()))
 
         # Parse numeric citations
         for match in re.finditer(self.NUMERIC_PATTERN, text):
+            # Skip if already parsed
+            if any(start <= match.start() < end for start, end in parsed_positions):
+                continue
+
             numbers_str = match.group(1)
             # Handle ranges and lists: [1-3] or [1,2,5]
             numbers = self._parse_numbers(numbers_str)
@@ -99,6 +120,7 @@ class CitationParser:
                     citation_type="numeric"
                 )
                 citations.append(citation)
+            parsed_positions.add((match.start(), match.end()))
 
         return citations
 

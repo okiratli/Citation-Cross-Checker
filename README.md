@@ -2,6 +2,8 @@
 
 A powerful tool that scans your manuscript drafts to ensure all in-text citations match your bibliography and vice versa, flagging any inconsistencies.
 
+**Created by: Osman Sabri Kiratli**
+
 ## Features
 
 - **🖥️ GUI Application**: Easy-to-use graphical interface for Windows (and cross-platform)
