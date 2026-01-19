@@ -103,9 +103,12 @@ class CitationParser:
         # Remove "et al." and split by common separators
         authors_str = authors_str.replace('et al.', '').strip()
 
-        if '&' in authors_str:
-            authors = [a.strip() for a in authors_str.split('&')]
+        # Split by '&' or 'and' first (for multiple authors)
+        if '&' in authors_str or re.search(r'\s+and\s+', authors_str):
+            authors = re.split(r'\s*&\s*|\s+and\s+', authors_str)
+            authors = [a.strip() for a in authors]
         elif ',' in authors_str:
+            # Split by comma (less common in citations, but handle it)
             authors = [a.strip() for a in authors_str.split(',')]
         else:
             authors = [authors_str.strip()]

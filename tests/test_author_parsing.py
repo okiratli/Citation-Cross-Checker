@@ -130,3 +130,70 @@ Chen, Li (2021). Fourth Study. Research Publishers.
         assert len(result.uncited_references) == 0
         # All citations have entries - should have no missing entries
         assert len(result.missing_bib_entries) == 0
+
+    def test_two_authors_with_and_in_parentheses(self):
+        """Test citations with 'and' separator like (Guisinger and Smith 2002)."""
+        checker = CitationChecker()
+
+        text = """
+Previous work shows results (Guisinger and Smith 2002).
+
+References:
+Guisinger, Alexandra, and Alastair Smith. 2002. "Honest Threats: The Interaction of
+Reputation and Political Institutions in International Crises." Journal of Conflict
+Resolution 46(2): 175–200.
+"""
+
+        result = checker.check_document(text)
+
+        # Should have no issues
+        assert len(result.missing_bib_entries) == 0
+        assert len(result.uncited_references) == 0
+        # Verify citation was parsed correctly
+        assert len(result.citations) == 1
+        assert result.citations[0].authors == ['Guisinger', 'Smith']
+        assert result.citations[0].year == '2002'
+
+    def test_two_authors_with_and_narrative(self):
+        """Test narrative citations with 'and' like 'Baum and Potter (2008)'."""
+        checker = CitationChecker()
+
+        text = """
+Previous research by Baum and Potter (2008) shows important findings.
+
+References:
+Baum, Matthew A., and Philip BK Potter. 2008. "The relationships between mass media,
+public opinion, and foreign policy: Toward a theoretical synthesis." Annu. Rev. Polit.
+Sci. 11: 39–65.
+"""
+
+        result = checker.check_document(text)
+
+        # Should have no issues
+        assert len(result.missing_bib_entries) == 0
+        assert len(result.uncited_references) == 0
+        # Verify citation was parsed correctly
+        assert len(result.citations) == 1
+        assert result.citations[0].authors == ['Baum', 'Potter']
+        assert result.citations[0].year == '2008'
+
+    def test_multiple_citations_with_and(self):
+        """Test multiple citations with 'and' in a single parenthetical."""
+        checker = CitationChecker()
+
+        text = """
+Multiple studies (Smith 1998; Schultz 2001; Guisinger and Smith 2002) support this.
+
+References:
+Smith, John. 1998. "Title." Journal 1(1): 1-10.
+Schultz, Kenneth. 2001. "Title." Journal 2(2): 20-30.
+Guisinger, Alexandra, and Alastair Smith. 2002. "Title." Journal 3(3): 40-50.
+"""
+
+        result = checker.check_document(text)
+
+        # Should have no issues
+        assert len(result.missing_bib_entries) == 0
+        assert len(result.uncited_references) == 0
+        # Verify all citations were parsed
+        assert len(result.citations) == 3
