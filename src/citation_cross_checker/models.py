@@ -56,6 +56,34 @@ class Citation:
 
         return True
 
+    def authors_match_bib(self, bib_entry: 'BibEntry') -> bool:
+        """Check if authors match, ignoring year (for year mismatch detection)."""
+        if self.citation_type == "numeric" or self.citation_type == "ieee":
+            return False  # Numeric citations don't have year mismatches
+
+        if not self.authors or not bib_entry.authors:
+            return False
+
+        def normalize_name(name):
+            """Extract last name from various formats."""
+            name = name.replace('.', '').replace(',', '').strip()
+            words = name.split()
+            if words:
+                return words[-1].lower()
+            return name.lower()
+
+        # Check if first author matches
+        citation_first = normalize_name(self.authors[0])
+        bib_first = normalize_name(bib_entry.authors[0])
+
+        # Match if the last names are the same or one contains the other
+        if citation_first == bib_first:
+            return True
+        if citation_first in bib_first or bib_first in citation_first:
+            return True
+
+        return False
+
 
 @dataclass
 class BibEntry:
@@ -83,6 +111,17 @@ class BibEntry:
 
 
 @dataclass
+class YearMismatch:
+    """Represents a potential year mismatch between citation and bibliography."""
+
+    citation: Citation
+    bib_entry: BibEntry
+
+    def __str__(self):
+        return f"Citation {self.citation.raw_text} vs Bibliography {self.bib_entry.get_key()}"
+
+
+@dataclass
 class CheckResult:
     """Results of citation cross-checking."""
 
@@ -90,10 +129,11 @@ class CheckResult:
     bib_entries: List[BibEntry]
     missing_bib_entries: List[Citation]  # Citations without matching bib entries
     uncited_references: List[BibEntry]  # Bib entries never cited
+    year_mismatches: List[YearMismatch]  # Potential year mismatches
 
     def has_issues(self) -> bool:
         """Return True if any inconsistencies were found."""
-        return bool(self.missing_bib_entries or self.uncited_references)
+        return bool(self.missing_bib_entries or self.uncited_references or self.year_mismatches)
 
     def generate_report(self, use_colors: bool = True) -> str:
         """Generate a human-readable report."""

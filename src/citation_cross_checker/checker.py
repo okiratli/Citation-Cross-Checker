@@ -1,7 +1,7 @@
 """Main citation cross-checking logic."""
 
 from typing import Optional
-from .models import CheckResult, Citation, BibEntry
+from .models import CheckResult, Citation, BibEntry, YearMismatch
 from .parsers import CitationParser, BibliographyParser
 from .document_reader import DocumentReader
 
@@ -40,11 +40,20 @@ class CitationChecker:
         # Find bibliography entries that are never cited
         uncited_references = self._find_uncited_references(citations, bib_entries)
 
+        # Find potential year mismatches
+        year_mismatches = self._find_year_mismatches(
+            missing_bib_entries,
+            uncited_references,
+            citations,
+            bib_entries
+        )
+
         return CheckResult(
             citations=citations,
             bib_entries=bib_entries,
             missing_bib_entries=missing_bib_entries,
-            uncited_references=uncited_references
+            uncited_references=uncited_references,
+            year_mismatches=year_mismatches
         )
 
     def check_file(
@@ -108,3 +117,44 @@ class CitationChecker:
                 uncited.append(bib_entry)
 
         return uncited
+
+    def _find_year_mismatches(
+        self,
+        missing_bib_entries: list[Citation],
+        uncited_references: list[BibEntry],
+        all_citations: list[Citation],
+        all_bib_entries: list[BibEntry]
+    ) -> list[YearMismatch]:
+        """
+        Find potential year mismatches.
+
+        When a citation has no matching bibliography entry, check if there's
+        a bibliography entry with the same authors but different year.
+        This often happens with online-first publications that change year
+        when officially published.
+        """
+        mismatches = []
+        processed_pairs = set()
+
+        # Check each missing citation for potential year mismatches
+        for citation in missing_bib_entries:
+            if not citation.year:
+                continue  # Need a year to detect mismatch
+
+            # Look for bibliography entries with matching authors but different years
+            for bib_entry in all_bib_entries:
+                if not bib_entry.year:
+                    continue
+
+                # Check if authors match but years don't
+                if citation.authors_match_bib(bib_entry) and citation.year != bib_entry.year:
+                    # Create a unique key to avoid duplicates
+                    pair_key = (id(citation), id(bib_entry))
+                    if pair_key not in processed_pairs:
+                        mismatches.append(YearMismatch(
+                            citation=citation,
+                            bib_entry=bib_entry
+                        ))
+                        processed_pairs.add(pair_key)
+
+        return mismatches

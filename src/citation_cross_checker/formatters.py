@@ -64,12 +64,25 @@ class ReportFormatter:
             lines.append(f"{self.GREEN}✓ All bibliography entries are cited{self.RESET}")
             lines.append("")
 
+        # Year mismatches
+        if result.year_mismatches:
+            lines.append(f"{self.BLUE}{self.BOLD}POTENTIAL YEAR MISMATCHES:{self.RESET}")
+            lines.append(f"{self.BLUE}(Same authors cited and in bibliography, but with different years){self.RESET}")
+            for mismatch in result.year_mismatches:
+                citation_year = mismatch.citation.year
+                bib_year = mismatch.bib_entry.year
+                bib_key = mismatch.bib_entry.get_key()
+                lines.append(f"  {self.BLUE}⚠{self.RESET}  Citation: {mismatch.citation.raw_text} (year: {citation_year})")
+                lines.append(f"      Bibliography: {bib_key} (year: {bib_year})")
+            lines.append("")
+
         # Summary
         lines.append(f"{self.BOLD}SUMMARY:{self.RESET}")
         lines.append(f"  Total in-text citations: {len(result.citations)}")
         lines.append(f"  Total bibliography entries: {len(result.bib_entries)}")
         lines.append(f"  Missing bibliography entries: {self.RED}{len(result.missing_bib_entries)}{self.RESET}")
         lines.append(f"  Uncited references: {self.YELLOW}{len(result.uncited_references)}{self.RESET}")
+        lines.append(f"  Potential year mismatches: {self.BLUE}{len(result.year_mismatches)}{self.RESET}")
         lines.append("")
 
         # Status
