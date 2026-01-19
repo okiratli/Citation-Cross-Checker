@@ -77,13 +77,12 @@ class Citation:
         bib_authors = [normalize_name(a) for a in bib_entry.authors]
 
         # If citation has only 1 author but bib has multiple, assume "et al." case
-        # Only check first author match
+        # Only check first author match (must be exact, not substring)
         if len(self.authors) == 1 and len(bib_entry.authors) > 1:
             citation_first = citation_authors[0]
             bib_first = bib_authors[0]
-            if citation_first == bib_first or citation_first in bib_first or bib_first in citation_first:
-                return True
-            return False
+            # Exact match only - prevents "Lee" from matching "Leeds"
+            return citation_first == bib_first
 
         # If citation has multiple authors, ALL must match (in any order)
         # This ensures "(Brutger and Clark)" doesn't match "Brutger and Kertzer"
@@ -91,13 +90,9 @@ class Citation:
             return False
 
         # Check if all citation authors are in bib authors (order may differ)
+        # Require exact matches only
         for cit_author in citation_authors:
-            matched = False
-            for bib_author in bib_authors:
-                if cit_author == bib_author or cit_author in bib_author or bib_author in cit_author:
-                    matched = True
-                    break
-            if not matched:
+            if cit_author not in bib_authors:
                 return False
 
         return True
