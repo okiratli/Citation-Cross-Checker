@@ -117,6 +117,9 @@ class CitationParser:
         else:
             authors = [authors_str.strip()]
 
+        # Clean up each author name - remove trailing punctuation
+        authors = [a.rstrip(',.;:') for a in authors]
+
         return [a for a in authors if a]
 
     def _parse_numbers(self, numbers_str: str) -> List[int]:
