@@ -8,7 +8,8 @@ A powerful tool that scans your manuscript drafts to ensure all in-text citation
 - **Bidirectional Checking**: Verifies citations have bibliography entries AND bibliography entries are cited
 - **Detailed Reports**: Clear, color-coded output showing all inconsistencies
 - **Format Detection**: Automatically detects citation style from your document
-- **Flexible Input**: Works with plain text, Markdown, and LaTeX files
+- **Flexible Input**: Works with plain text, Markdown, LaTeX, and **Word (.docx)** files
+- **Robust Parsing**: Correctly handles various bibliography formats including "LastName, FirstName" entries
 
 ## Installation
 
@@ -29,8 +30,11 @@ pip install -r requirements.txt
 ### Command Line
 
 ```bash
-# Check a manuscript file
+# Check a manuscript file (supports .txt, .md, .docx)
 citation-checker check manuscript.txt
+
+# Check a Word document
+citation-checker check thesis.docx
 
 # Specify custom bibliography section
 citation-checker check manuscript.txt --bib-section "Works Cited"
@@ -50,11 +54,14 @@ from citation_cross_checker import CitationChecker
 # Initialize checker
 checker = CitationChecker()
 
-# Load document
+# Option 1: Check a file directly (supports .txt, .md, .docx)
+result = checker.check_file('manuscript.txt')
+# or
+result = checker.check_file('thesis.docx')
+
+# Option 2: Check text directly
 with open('manuscript.txt', 'r') as f:
     text = f.read()
-
-# Run check
 result = checker.check_document(text)
 
 # Print report

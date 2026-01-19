@@ -18,8 +18,16 @@ pip install -e .
 
 ### Check a manuscript file
 
+Supports .txt, .md, .docx (Word) files:
+
 ```bash
 citation-checker check examples/sample_manuscript.txt
+```
+
+Or check a Word document:
+
+```bash
+citation-checker check your_thesis.docx
 ```
 
 ### Check a file with issues

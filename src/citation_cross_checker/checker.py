@@ -3,6 +3,7 @@
 from typing import Optional
 from .models import CheckResult, Citation, BibEntry
 from .parsers import CitationParser, BibliographyParser
+from .document_reader import DocumentReader
 
 
 class CitationChecker:
@@ -54,16 +55,16 @@ class CitationChecker:
         """
         Check a file for citation-bibliography consistency.
 
+        Supports: .txt, .md, .docx files
+
         Args:
-            file_path: Path to the manuscript file
+            file_path: Path to the manuscript file (.txt, .md, .docx)
             bib_section_name: Optional custom name for bibliography section
 
         Returns:
             CheckResult object with findings
         """
-        with open(file_path, 'r', encoding='utf-8') as f:
-            text = f.read()
-
+        text = DocumentReader.read_file(file_path)
         return self.check_document(text, bib_section_name)
 
     def _find_missing_bib_entries(

@@ -28,12 +28,27 @@ class Citation:
         if not self.authors or not bib_entry.authors:
             return False
 
-        # Check if first author matches (handle "et al." cases)
-        citation_first = self.authors[0].lower()
-        bib_first = bib_entry.authors[0].lower()
+        # Normalize author names for comparison
+        # Extract last names and compare (case-insensitive)
+        def normalize_name(name):
+            """Extract last name from various formats."""
+            # Remove common punctuation
+            name = name.replace('.', '').replace(',', '').strip()
+            # Get the last word (usually the last name)
+            words = name.split()
+            if words:
+                return words[-1].lower()
+            return name.lower()
 
-        if citation_first not in bib_first and bib_first not in citation_first:
-            return False
+        # Check if first author matches (handle "et al." cases)
+        citation_first = normalize_name(self.authors[0])
+        bib_first = normalize_name(bib_entry.authors[0])
+
+        # Match if the last names are the same or one contains the other
+        if citation_first != bib_first:
+            # Allow partial match (e.g., "Smith-Jones" matches "Smith")
+            if citation_first not in bib_first and bib_first not in citation_first:
+                return False
 
         # If year is present in both, it must match
         if self.year and bib_entry.year:
