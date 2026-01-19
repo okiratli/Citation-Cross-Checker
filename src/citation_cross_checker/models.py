@@ -72,17 +72,35 @@ class Citation:
                 return words[-1].lower()
             return name.lower()
 
-        # Check if first author matches
-        citation_first = normalize_name(self.authors[0])
-        bib_first = normalize_name(bib_entry.authors[0])
+        # Normalize all author names
+        citation_authors = [normalize_name(a) for a in self.authors]
+        bib_authors = [normalize_name(a) for a in bib_entry.authors]
 
-        # Match if the last names are the same or one contains the other
-        if citation_first == bib_first:
-            return True
-        if citation_first in bib_first or bib_first in citation_first:
-            return True
+        # If citation has only 1 author but bib has multiple, assume "et al." case
+        # Only check first author match
+        if len(self.authors) == 1 and len(bib_entry.authors) > 1:
+            citation_first = citation_authors[0]
+            bib_first = bib_authors[0]
+            if citation_first == bib_first or citation_first in bib_first or bib_first in citation_first:
+                return True
+            return False
 
-        return False
+        # If citation has multiple authors, ALL must match (in any order)
+        # This ensures "(Brutger and Clark)" doesn't match "Brutger and Kertzer"
+        if len(citation_authors) != len(bib_authors):
+            return False
+
+        # Check if all citation authors are in bib authors (order may differ)
+        for cit_author in citation_authors:
+            matched = False
+            for bib_author in bib_authors:
+                if cit_author == bib_author or cit_author in bib_author or bib_author in cit_author:
+                    matched = True
+                    break
+            if not matched:
+                return False
+
+        return True
 
 
 @dataclass
