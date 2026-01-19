@@ -129,14 +129,25 @@ class CitationParser:
         # Remove "et al." and split by common separators
         authors_str = authors_str.replace('et al.', '').strip()
 
-        # Split by '&' or 'and' first (for multiple authors)
-        if '&' in authors_str or re.search(r'\s+and\s+', authors_str):
+        # Handle three+ author case: "Author1, Author2, and Author3"
+        # Check if we have both commas and "and" (or "&")
+        has_and = '&' in authors_str or re.search(r'\s+and\s+', authors_str)
+        has_comma = ',' in authors_str
+
+        if has_comma and has_and:
+            # Three or more authors with format: "Author1, Author2, and Author3"
+            # Replace "and" or "&" with comma for uniform splitting
+            authors_str = re.sub(r'\s*&\s*|\s+and\s+', ',', authors_str)
+            authors = [a.strip() for a in authors_str.split(',')]
+        elif has_and:
+            # Two authors: "Author1 and Author2" or "Author1 & Author2"
             authors = re.split(r'\s*&\s*|\s+and\s+', authors_str)
             authors = [a.strip() for a in authors]
-        elif ',' in authors_str:
+        elif has_comma:
             # Split by comma (less common in citations, but handle it)
             authors = [a.strip() for a in authors_str.split(',')]
         else:
+            # Single author
             authors = [authors_str.strip()]
 
         # Clean up each author name - remove trailing punctuation
@@ -367,10 +378,30 @@ class BibliographyParser:
 
             # For each author part, extract the last name
             # Format: "LastName, FirstName" or "LastName, F. M." or just "LastName"
+            # OR mixed: "LastName, FirstName, FirstName LastName, FirstName LastName"
             if ',' in author_part:
-                # Split by first comma to get last name
-                last_name = author_part.split(',')[0].strip()
-                authors.append(last_name)
+                # Split by ALL commas to handle mixed formats
+                # Example: "Tomz, Michael, Jessica LP Weeks" -> ["Tomz", "Michael", "Jessica LP Weeks"]
+                comma_parts = author_part.split(',')
+                for i, comma_part in enumerate(comma_parts):
+                    comma_part = comma_part.strip()
+                    if not comma_part:
+                        continue
+
+                    if i == 0:
+                        # First part is always the first author's last name
+                        authors.append(comma_part)
+                    else:
+                        # Check if this is a subsequent author (FirstName LastName)
+                        # or just the first author's first name/initials
+                        words = comma_part.split()
+                        real_words = [w for w in words if len(w.replace('.', '')) > 1]
+
+                        if len(real_words) >= 2:
+                            # Multiple words - this is a subsequent author in "FirstName LastName" format
+                            # Extract last word as last name
+                            authors.append(real_words[-1])
+                        # else: Single word or just initials - skip (likely first author's first name)
             else:
                 # No comma, might be "FirstName LastName" format or just "LastName"
                 # Take the last word as the last name
