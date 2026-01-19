@@ -1,0 +1,31 @@
+Sample Research Paper with Citation Issues
+
+Introduction
+
+This document intentionally contains citation inconsistencies to demonstrate
+the Citation Cross-Checker tool's capabilities.
+
+Proper citations exist for some sources (Smith, 2020) and (Johnson, 2021).
+However, there are also citations without bibliography entries (Williams, 2019)
+and (Garcia et al., 2022).
+
+Some numeric citations are present [1] and [2], but others are missing [5].
+
+Body
+
+Additional content with more citations (Taylor, 2018) and references to
+work that will not appear in the bibliography (Brown, 2021).
+
+References:
+
+Smith, J. (2020). First Valid Citation. Journal of Research, 10(1), 15-30.
+
+Johnson, M. (2021). Second Valid Entry. Academic Press.
+
+Lee, K. (2017). This Entry is Never Cited in the Text. Science Publishers.
+
+Davis, R. (2019). Another Uncited Work. University Press.
+
+[1] IEEE, "First Numeric Reference," Standards, 2020.
+
+[2] Jones, T., "Second Reference," Conference Proceedings, 2021.
