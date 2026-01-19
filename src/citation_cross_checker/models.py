@@ -1,0 +1,87 @@
+"""Data models for citations and bibliography entries."""
+
+from dataclasses import dataclass
+from typing import List, Optional
+
+
+@dataclass
+class Citation:
+    """Represents an in-text citation."""
+
+    raw_text: str
+    authors: List[str]
+    year: Optional[str] = None
+    page: Optional[str] = None
+    number: Optional[int] = None  # For numeric citations like [1]
+    position: int = 0  # Character position in document
+    citation_type: str = "unknown"  # apa, mla, ieee, numeric
+
+    def __str__(self):
+        return self.raw_text
+
+    def matches_bib(self, bib_entry: 'BibEntry') -> bool:
+        """Check if this citation matches a bibliography entry."""
+        if self.citation_type == "numeric" or self.citation_type == "ieee":
+            return self.number == bib_entry.number
+
+        # For author-year citations (APA, MLA)
+        if not self.authors or not bib_entry.authors:
+            return False
+
+        # Check if first author matches (handle "et al." cases)
+        citation_first = self.authors[0].lower()
+        bib_first = bib_entry.authors[0].lower()
+
+        if citation_first not in bib_first and bib_first not in citation_first:
+            return False
+
+        # If year is present in both, it must match
+        if self.year and bib_entry.year:
+            return self.year == bib_entry.year
+
+        return True
+
+
+@dataclass
+class BibEntry:
+    """Represents a bibliography entry."""
+
+    raw_text: str
+    authors: List[str]
+    year: Optional[str] = None
+    title: Optional[str] = None
+    number: Optional[int] = None  # For numbered references like [1]
+    position: int = 0  # Line number in bibliography
+    entry_type: str = "unknown"  # apa, mla, ieee, numeric
+
+    def __str__(self):
+        return self.raw_text
+
+    def get_key(self) -> str:
+        """Generate a unique key for this entry."""
+        if self.number is not None:
+            return f"[{self.number}]"
+        if self.authors and self.year:
+            first_author = self.authors[0].split(',')[0].split()[-1]
+            return f"{first_author}, {self.year}"
+        return self.raw_text[:50]
+
+
+@dataclass
+class CheckResult:
+    """Results of citation cross-checking."""
+
+    citations: List[Citation]
+    bib_entries: List[BibEntry]
+    missing_bib_entries: List[Citation]  # Citations without matching bib entries
+    uncited_references: List[BibEntry]  # Bib entries never cited
+
+    def has_issues(self) -> bool:
+        """Return True if any inconsistencies were found."""
+        return bool(self.missing_bib_entries or self.uncited_references)
+
+    def generate_report(self, use_colors: bool = True) -> str:
+        """Generate a human-readable report."""
+        from .formatters import ReportFormatter
+        formatter = ReportFormatter(use_colors=use_colors)
+        return formatter.format_result(self)
