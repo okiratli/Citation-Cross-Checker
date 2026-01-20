@@ -10,10 +10,11 @@ class CitationParser:
 
     # Author-year styles: APA, Harvard, Chicago
     # Patterns: (Author, Year), (Author Year), (Author et al., Year)
-    AUTHOR_YEAR_PATTERN = r'\(([A-Z][a-zA-Z\s&,]+(?:\set\sal\.)?),\s*(\d{4}[a-z]?)\)'
+    # Unicode-aware: includes extended Latin characters (e.g., Ç, Ğ, İ, Ş for Turkish names)
+    AUTHOR_YEAR_PATTERN = r'\(([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\s&,]+(?:\set\sal\.)?),\s*(\d{4}[a-z]?)\)'
 
     # MLA style: (Author Page) or (Author et al. Page)
-    MLA_PATTERN = r'\(([A-Z][a-zA-Z\s&]+(?:\set\sal\.)?)\s+(\d+(?:-\d+)?)\)'
+    MLA_PATTERN = r'\(([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\s&]+(?:\set\sal\.)?)\s+(\d+(?:-\d+)?)\)'
 
     # Numeric/IEEE: [1], [1-3], [1,2,3]
     NUMERIC_PATTERN = r'\[(\d+(?:\s*[-,]\s*\d+)*)\]'
@@ -61,7 +62,8 @@ class CitationParser:
                         continue
                     # Extract author and year from each part
                     # Comma is optional to support both APA (Author, Year) and Harvard/Chicago (Author Year)
-                    cite_match = re.search(r'([A-Z][a-zA-Z\s&,]+(?:\set\sal\.)?),?\s*(\d{4}[a-z]?)', part)
+                    # Unicode-aware: includes extended Latin characters
+                    cite_match = re.search(r'([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\s&,]+(?:\set\sal\.)?),?\s*(\d{4}[a-z]?)', part)
                     if cite_match:
                         authors_str = cite_match.group(1).strip()
                         year = cite_match.group(2).strip()
@@ -85,7 +87,8 @@ class CitationParser:
         # Parse narrative citations (Author (Year))
         # Used in APA, Harvard, and Chicago styles
         # Pattern: "Brown (2018)" or "Smith and Jones (2020)"
-        narrative_pattern = r'([A-Z][a-zA-Z\'\-]+(?:\s+(?:and|&)\s+[A-Z][a-zA-Z\'\-]+)?)\s+\((\d{4}[a-z]?)\)'
+        # Unicode-aware: includes extended Latin characters
+        narrative_pattern = r'([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+(?:\s+(?:and|&)\s+[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+)?)\s+\((\d{4}[a-z]?)\)'
         for match in re.finditer(narrative_pattern, text):
             # Skip if already parsed
             if any(start <= match.start() < end for start, end in parsed_positions):
@@ -401,7 +404,8 @@ class BibliographyParser:
             # Check if this line starts a new bibliography entry
             # Typical patterns: "LastName, FirstName" or "LastName, F."
             # Look for: Capital letter, followed by letters, then comma, then space, then capital letter
-            is_new_entry = re.match(r'^[A-Z][a-zA-Z\'\-]+,\s+[A-Z]', line)
+            # Unicode-aware: includes extended Latin characters
+            is_new_entry = re.match(r'^[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+,\s+[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F]', line)
 
             if is_new_entry and current_entry:
                 # Process previous entry
