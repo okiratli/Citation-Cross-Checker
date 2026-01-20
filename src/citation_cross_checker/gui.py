@@ -98,7 +98,7 @@ Created by: Osman Sabri Kiratli
 - Multi-Format Support: APA, Harvard, Chicago, MLA, IEEE, and numeric citations
 - Bidirectional Checking: Verifies citations have bibliography entries AND vice versa
 - Year Mismatch Detection: Identifies potential year mismatches (online-first publications)
-- Word Document Support: Works with .txt, .md, and .docx files
+- Document Support: Works with .txt, .md, .docx, and .pdf files
 - GUI Application: Easy-to-use graphical interface
 
 ## Supported Citation Formats
@@ -177,7 +177,7 @@ Created by: Osman Sabri Kiratli
 
 Supports:
 • APA, Harvard, Chicago, MLA, IEEE citation styles
-• Word documents (.docx), text files (.txt, .md)
+• Word documents (.docx), text files (.txt, .md), PDF files (.pdf)
 • Bidirectional citation checking
 • Year mismatch detection
 
@@ -227,7 +227,7 @@ GitHub: https://github.com/okiratli/abc
 
         ttk.Label(
             file_frame,
-            text="Supported: .txt, .md, .docx",
+            text="Supported: .txt, .md, .docx, .pdf",
             font=('Arial', 9, 'italic')
         ).grid(row=1, column=1, sticky=tk.W, padx=(10, 0))
 
@@ -318,10 +318,11 @@ GitHub: https://github.com/okiratli/abc
         filename = filedialog.askopenfilename(
             title="Select Manuscript File",
             filetypes=[
-                ("All Supported", "*.txt *.md *.docx"),
+                ("All Supported", "*.txt *.md *.docx *.pdf"),
                 ("Text Files", "*.txt"),
                 ("Markdown Files", "*.md"),
                 ("Word Documents", "*.docx"),
+                ("PDF Documents", "*.pdf"),
                 ("All Files", "*.*")
             ]
         )

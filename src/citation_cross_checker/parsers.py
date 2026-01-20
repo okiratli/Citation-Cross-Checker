@@ -10,10 +10,11 @@ class CitationParser:
 
     # Author-year styles: APA, Harvard, Chicago
     # Patterns: (Author, Year), (Author Year), (Author et al., Year)
-    AUTHOR_YEAR_PATTERN = r'\(([A-Z][a-zA-Z\s&,]+(?:\set\sal\.)?),\s*(\d{4}[a-z]?)\)'
+    # Unicode-aware: includes extended Latin characters (e.g., Ç, Ğ, İ, Ş for Turkish names)
+    AUTHOR_YEAR_PATTERN = r'\(([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\s&,]+(?:\set\sal\.)?),\s*(\d{4}[a-z]?)\)'
 
     # MLA style: (Author Page) or (Author et al. Page)
-    MLA_PATTERN = r'\(([A-Z][a-zA-Z\s&]+(?:\set\sal\.)?)\s+(\d+(?:-\d+)?)\)'
+    MLA_PATTERN = r'\(([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\s&]+(?:\set\sal\.)?)\s+(\d+(?:-\d+)?)\)'
 
     # Numeric/IEEE: [1], [1-3], [1,2,3]
     NUMERIC_PATTERN = r'\[(\d+(?:\s*[-,]\s*\d+)*)\]'
@@ -31,16 +32,46 @@ class CitationParser:
             content = match.group(1)
             # Check if this looks like citation(s)
             if re.search(r'\d{4}', content):  # Has a year
-                # Split by semicolon for multiple citations
-                parts = content.split(';')
+                # Split by semicolon OR by comma after year (for comma-separated multi-citations)
+                # Pattern: "Author1 Year1, Author2 Year2" or "Author1 Year1; Author2 Year2"
+                # Use regex to split after year when followed by comma and capital letter
+                parts = []
+                if ';' in content:
+                    # Traditional semicolon-separated
+                    parts = content.split(';')
+                else:
+                    # Try to split by comma after year (e.g., "2024, Gidron")
+                    # Split pattern: YYYY[a-z]?,\s+[A-Z] (Unicode-aware for international names)
+                    split_pattern = r'(\d{4}[a-z]?),\s+(?=[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F])'
+                    parts_raw = re.split(split_pattern, content)
+                    # Reassemble: parts_raw looks like ["Author1", "2024", "Author2 Year2"]
+                    # We need to combine them back: ["Author1 2024", "Author2 Year2"]
+                    i = 0
+                    while i < len(parts_raw):
+                        if i + 1 < len(parts_raw) and re.match(r'\d{4}[a-z]?$', parts_raw[i + 1]):
+                            # Combine current part with next (year)
+                            parts.append(parts_raw[i] + ' ' + parts_raw[i + 1])
+                            i += 2
+                        else:
+                            parts.append(parts_raw[i])
+                            i += 1
+
                 for part in parts:
                     part = part.strip()
+                    if not part:
+                        continue
                     # Extract author and year from each part
                     # Comma is optional to support both APA (Author, Year) and Harvard/Chicago (Author Year)
-                    cite_match = re.search(r'([A-Z][a-zA-Z\s&,]+(?:\set\sal\.)?),?\s*(\d{4}[a-z]?)', part)
+                    # Unicode-aware: includes extended Latin characters
+                    cite_match = re.search(r'([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\s&,]+(?:\set\sal\.)?),?\s*(\d{4}[a-z]?)', part)
                     if cite_match:
                         authors_str = cite_match.group(1).strip()
                         year = cite_match.group(2).strip()
+
+                        # Filter out non-author patterns (like "Hypothesis", "Table", "Figure")
+                        if self._is_non_author_pattern(authors_str):
+                            continue
+
                         authors = self._parse_authors(authors_str)
 
                         citation = Citation(
@@ -55,8 +86,11 @@ class CitationParser:
 
         # Parse narrative citations (Author (Year))
         # Used in APA, Harvard, and Chicago styles
-        # Pattern: "Brown (2018)" or "Smith and Jones (2020)"
-        narrative_pattern = r'([A-Z][a-zA-Z\'\-]+(?:\s+(?:and|&)\s+[A-Z][a-zA-Z\'\-]+)?)\s+\((\d{4}[a-z]?)\)'
+        # Pattern: "Brown (2018)", "Smith and Jones (2020)", or "Gidron, Adams, and Horne (2019)"
+        # Handles 1+ authors with commas, "and", or "&" as separators
+        # Unicode-aware: includes extended Latin characters
+        # Negative lookbehind (?<!,\s) prevents matching authors in middle of comma-separated lists
+        narrative_pattern = r'(?<!,\s)([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+(?:(?:,\s+(?:and\s+|&\s+)?|\s+(?:and|&)\s+)[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+)*)\s+\((\d{4}[a-z]?)\)'
         for match in re.finditer(narrative_pattern, text):
             # Skip if already parsed
             if any(start <= match.start() < end for start, end in parsed_positions):
@@ -64,6 +98,11 @@ class CitationParser:
 
             authors_str = match.group(1).strip()
             year = match.group(2).strip()
+
+            # Filter out non-author patterns
+            if self._is_non_author_pattern(authors_str):
+                continue
+
             authors = self._parse_authors(authors_str)
 
             citation = Citation(
@@ -89,6 +128,10 @@ class CitationParser:
             if len(page) == 4 and page.isdigit():
                 continue
 
+            # Filter out non-author patterns (like "Hypothesis", "Table")
+            if self._is_non_author_pattern(authors_str):
+                continue
+
             authors = self._parse_authors(authors_str)
 
             citation = Citation(
@@ -105,6 +148,16 @@ class CitationParser:
         for match in re.finditer(self.NUMERIC_PATTERN, text):
             # Skip if already parsed
             if any(start <= match.start() < end for start, end in parsed_positions):
+                continue
+
+            # Check for false positives (Table 1, Figure 1, etc.)
+            # Look at text before the match
+            start_pos = max(0, match.start() - 20)
+            context_before = text[start_pos:match.start()].lower()
+
+            # Skip if preceded by common false positive keywords
+            false_positive_keywords = ['table', 'figure', 'fig.', 'fig', 'appendix', 'section', 'chapter']
+            if any(keyword in context_before for keyword in false_positive_keywords):
                 continue
 
             numbers_str = match.group(1)
@@ -124,8 +177,59 @@ class CitationParser:
 
         return citations
 
+    def _is_non_author_pattern(self, text: str) -> bool:
+        """
+        Check if text matches non-author patterns that shouldn't be parsed as citations.
+        Examples: "Hypothesis 3", "Table 1", "Figure 2"
+        """
+        text_lower = text.lower().strip()
+
+        # List of common non-author words
+        non_author_words = [
+            'hypothesis', 'table', 'figure', 'appendix', 'section',
+            'chapter', 'equation', 'model', 'result', 'study',
+            'example', 'case', 'scenario', 'version', 'step'
+        ]
+
+        # Check if the text starts with any non-author word
+        for word in non_author_words:
+            if text_lower.startswith(word):
+                return True
+
+        return False
+
+    def _strip_citation_prefixes(self, text: str) -> str:
+        """
+        Remove common citation prefixes from the author string.
+        Examples: "e.g., Author", "see Author", "cf. Author"
+        """
+        text = text.strip()
+
+        # List of common citation prefixes (case-insensitive)
+        prefixes = [
+            'e.g.,', 'e.g.', 'eg.',
+            'i.e.,', 'i.e.', 'ie.',
+            'cf.', 'cf',
+            'see', 'see also',
+            'but see', 'but cf.',
+            'contra',
+            'compare',
+        ]
+
+        text_lower = text.lower()
+        for prefix in prefixes:
+            if text_lower.startswith(prefix):
+                # Remove the prefix and any following whitespace
+                text = text[len(prefix):].strip()
+                break
+
+        return text
+
     def _parse_authors(self, authors_str: str) -> List[str]:
         """Parse author names from citation."""
+        # Remove citation prefixes (e.g., "e.g.,", "see", "cf.")
+        authors_str = self._strip_citation_prefixes(authors_str)
+
         # Remove "et al." and split by common separators
         authors_str = authors_str.replace('et al.', '').strip()
 
@@ -195,6 +299,8 @@ class BibliographyParser:
             'references', 'bibliography', 'works cited', 'citations',
             'literature cited', 'sources'
         ]
+        # Endnotes headers (not bibliography, but contain citations)
+        self.endnotes_headers = ['notes', 'endnotes', 'footnotes']
 
     def parse(self, text: str, bib_section_name: str = None) -> Tuple[List[BibEntry], str]:
         """
@@ -239,8 +345,49 @@ class BibliographyParser:
             match = re.search(pattern, text, re.MULTILINE | re.IGNORECASE)
 
             if match:
-                # Return everything after the header
-                return text[match.end():].strip()
+                # Find the next section header (if any) to limit the bibliography section
+                # This prevents including endnotes in the bibliography
+                bib_start = match.end()
+
+                # Look for next major section after bibliography
+                # Include Notes/Endnotes/Footnotes to prevent them from being part of bibliography
+                next_section = re.search(
+                    r'^(acknowledgments?|appendix|supplementary materials?|notes|endnotes|footnotes)\s*:?\s*$',
+                    text[bib_start:],
+                    re.MULTILINE | re.IGNORECASE
+                )
+
+                if next_section:
+                    return text[bib_start:bib_start + next_section.start()].strip()
+                else:
+                    return text[bib_start:].strip()
+
+        return ""
+
+    def extract_endnotes_section(self, text: str) -> str:
+        """
+        Extract the endnotes/notes section from the document.
+        This section often contains citations that should be parsed.
+        """
+        for header in self.endnotes_headers:
+            # Look for the header (case-insensitive)
+            pattern = r'^' + re.escape(header) + r'\s*:?\s*$'
+            match = re.search(pattern, text, re.MULTILINE | re.IGNORECASE)
+
+            if match:
+                # Find where this section ends (before References/Bibliography)
+                notes_start = match.end()
+
+                # Look for bibliography section that follows
+                for bib_header in self.bib_headers:
+                    bib_pattern = r'^' + re.escape(bib_header) + r'\s*:?\s*$'
+                    bib_match = re.search(bib_pattern, text[notes_start:], re.MULTILINE | re.IGNORECASE)
+
+                    if bib_match:
+                        return text[notes_start:notes_start + bib_match.start()].strip()
+
+                # If no bibliography found after, return rest of document
+                return text[notes_start:].strip()
 
         return ""
 
@@ -290,7 +437,8 @@ class BibliographyParser:
             # Check if this line starts a new bibliography entry
             # Typical patterns: "LastName, FirstName" or "LastName, F."
             # Look for: Capital letter, followed by letters, then comma, then space, then capital letter
-            is_new_entry = re.match(r'^[A-Z][a-zA-Z\'\-]+,\s+[A-Z]', line)
+            # Unicode-aware: includes extended Latin characters
+            is_new_entry = re.match(r'^[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+,\s+[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F]', line)
 
             if is_new_entry and current_entry:
                 # Process previous entry
@@ -367,6 +515,10 @@ class BibliographyParser:
                 else:
                     before_year = text[:100]  # Fallback
 
+        # Remove "et al." from bibliography entries (e.g., "Türkoğlu, D. et al. (2022)")
+        # This should be removed before parsing author names
+        before_year = before_year.replace('et al.', '').replace('et al', '').strip()
+
         # Now parse authors from this section
         # Split by '&' or 'and' first (for multiple authors)
         author_parts = re.split(r'\s+&\s+|\s+and\s+', before_year)
@@ -401,7 +553,11 @@ class BibliographyParser:
                             # Multiple words - this is a subsequent author in "FirstName LastName" format
                             # Extract last word as last name
                             authors.append(real_words[-1])
-                        # else: Single word or just initials - skip (likely first author's first name)
+                        elif len(real_words) == 1 and len(real_words[0]) > 2:
+                            # Single word but long enough to be a last name (not just initials)
+                            # E.g., "Gentzkow" in "Boxell, L., Gentzkow, M."
+                            authors.append(real_words[0])
+                        # else: Just initials - skip (likely first author's first name)
             else:
                 # No comma, might be "FirstName LastName" format or just "LastName"
                 # Take the last word as the last name
