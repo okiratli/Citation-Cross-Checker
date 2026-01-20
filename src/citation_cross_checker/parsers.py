@@ -31,16 +31,45 @@ class CitationParser:
             content = match.group(1)
             # Check if this looks like citation(s)
             if re.search(r'\d{4}', content):  # Has a year
-                # Split by semicolon for multiple citations
-                parts = content.split(';')
+                # Split by semicolon OR by comma after year (for comma-separated multi-citations)
+                # Pattern: "Author1 Year1, Author2 Year2" or "Author1 Year1; Author2 Year2"
+                # Use regex to split after year when followed by comma and capital letter
+                parts = []
+                if ';' in content:
+                    # Traditional semicolon-separated
+                    parts = content.split(';')
+                else:
+                    # Try to split by comma after year (e.g., "2024, Gidron")
+                    # Split pattern: YYYY[a-z]?,\s+[A-Z]
+                    split_pattern = r'(\d{4}[a-z]?),\s+(?=[A-Z])'
+                    parts_raw = re.split(split_pattern, content)
+                    # Reassemble: parts_raw looks like ["Author1", "2024", "Author2 Year2"]
+                    # We need to combine them back: ["Author1 2024", "Author2 Year2"]
+                    i = 0
+                    while i < len(parts_raw):
+                        if i + 1 < len(parts_raw) and re.match(r'\d{4}[a-z]?$', parts_raw[i + 1]):
+                            # Combine current part with next (year)
+                            parts.append(parts_raw[i] + ' ' + parts_raw[i + 1])
+                            i += 2
+                        else:
+                            parts.append(parts_raw[i])
+                            i += 1
+
                 for part in parts:
                     part = part.strip()
+                    if not part:
+                        continue
                     # Extract author and year from each part
                     # Comma is optional to support both APA (Author, Year) and Harvard/Chicago (Author Year)
                     cite_match = re.search(r'([A-Z][a-zA-Z\s&,]+(?:\set\sal\.)?),?\s*(\d{4}[a-z]?)', part)
                     if cite_match:
                         authors_str = cite_match.group(1).strip()
                         year = cite_match.group(2).strip()
+
+                        # Filter out non-author patterns (like "Hypothesis", "Table", "Figure")
+                        if self._is_non_author_pattern(authors_str):
+                            continue
+
                         authors = self._parse_authors(authors_str)
 
                         citation = Citation(
@@ -64,6 +93,11 @@ class CitationParser:
 
             authors_str = match.group(1).strip()
             year = match.group(2).strip()
+
+            # Filter out non-author patterns
+            if self._is_non_author_pattern(authors_str):
+                continue
+
             authors = self._parse_authors(authors_str)
 
             citation = Citation(
@@ -87,6 +121,10 @@ class CitationParser:
 
             # Skip if the "page" is actually a 4-digit year
             if len(page) == 4 and page.isdigit():
+                continue
+
+            # Filter out non-author patterns (like "Hypothesis", "Table")
+            if self._is_non_author_pattern(authors_str):
                 continue
 
             authors = self._parse_authors(authors_str)
@@ -133,6 +171,27 @@ class CitationParser:
             parsed_positions.add((match.start(), match.end()))
 
         return citations
+
+    def _is_non_author_pattern(self, text: str) -> bool:
+        """
+        Check if text matches non-author patterns that shouldn't be parsed as citations.
+        Examples: "Hypothesis 3", "Table 1", "Figure 2"
+        """
+        text_lower = text.lower().strip()
+
+        # List of common non-author words
+        non_author_words = [
+            'hypothesis', 'table', 'figure', 'appendix', 'section',
+            'chapter', 'equation', 'model', 'result', 'study',
+            'example', 'case', 'scenario', 'version', 'step'
+        ]
+
+        # Check if the text starts with any non-author word
+        for word in non_author_words:
+            if text_lower.startswith(word):
+                return True
+
+        return False
 
     def _parse_authors(self, authors_str: str) -> List[str]:
         """Parse author names from citation."""
@@ -453,7 +512,11 @@ class BibliographyParser:
                             # Multiple words - this is a subsequent author in "FirstName LastName" format
                             # Extract last word as last name
                             authors.append(real_words[-1])
-                        # else: Single word or just initials - skip (likely first author's first name)
+                        elif len(real_words) == 1 and len(real_words[0]) > 2:
+                            # Single word but long enough to be a last name (not just initials)
+                            # E.g., "Gentzkow" in "Boxell, L., Gentzkow, M."
+                            authors.append(real_words[0])
+                        # else: Just initials - skip (likely first author's first name)
             else:
                 # No comma, might be "FirstName LastName" format or just "LastName"
                 # Take the last word as the last name
