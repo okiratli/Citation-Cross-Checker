@@ -24,6 +24,7 @@ dependencies = [
     "click>=8.0.0",
     "colorama>=0.4.4",
     "python-docx>=0.8.11",
+    "pypdf>=3.0.0",
 ]
 
 [project.optional-dependencies]

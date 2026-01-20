@@ -318,10 +318,11 @@ GitHub: https://github.com/okiratli/abc
         filename = filedialog.askopenfilename(
             title="Select Manuscript File",
             filetypes=[
-                ("All Supported", "*.txt *.md *.docx"),
+                ("All Supported", "*.txt *.md *.docx *.pdf"),
                 ("Text Files", "*.txt"),
                 ("Markdown Files", "*.md"),
                 ("Word Documents", "*.docx"),
+                ("PDF Documents", "*.pdf"),
                 ("All Files", "*.*")
             ]
         )

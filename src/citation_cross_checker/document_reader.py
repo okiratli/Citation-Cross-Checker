@@ -16,6 +16,7 @@ class DocumentReader:
         - Plain text files (.txt)
         - Markdown files (.md)
         - Word documents (.docx)
+        - PDF files (.pdf)
 
         Args:
             file_path: Path to the file
@@ -38,6 +39,8 @@ class DocumentReader:
             return DocumentReader._read_text_file(file_path)
         elif suffix == '.docx':
             return DocumentReader._read_docx_file(file_path)
+        elif suffix == '.pdf':
+            return DocumentReader._read_pdf_file(file_path)
         else:
             # Try to read as text file anyway
             try:
@@ -45,7 +48,7 @@ class DocumentReader:
             except Exception:
                 raise ValueError(
                     f"Unsupported file format: {suffix}. "
-                    f"Supported formats: .txt, .md, .docx"
+                    f"Supported formats: .txt, .md, .docx, .pdf"
                 )
 
     @staticmethod
@@ -83,3 +86,29 @@ class DocumentReader:
                         paragraphs.append(text)
 
         return '\n'.join(paragraphs)
+
+    @staticmethod
+    def _read_pdf_file(file_path: Path) -> str:
+        """Read a PDF file."""
+        try:
+            from pypdf import PdfReader
+        except ImportError:
+            try:
+                from PyPDF2 import PdfReader
+            except ImportError:
+                raise ImportError(
+                    "pypdf is required to read PDF files. "
+                    "Install it with: pip install pypdf"
+                )
+
+        # Read PDF file
+        reader = PdfReader(file_path)
+
+        # Extract text from all pages
+        text_parts = []
+        for page in reader.pages:
+            text = page.extract_text()
+            if text:
+                text_parts.append(text)
+
+        return '\n'.join(text_parts)

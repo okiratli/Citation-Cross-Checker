@@ -107,6 +107,16 @@ class CitationParser:
             if any(start <= match.start() < end for start, end in parsed_positions):
                 continue
 
+            # Check for false positives (Table 1, Figure 1, etc.)
+            # Look at text before the match
+            start_pos = max(0, match.start() - 20)
+            context_before = text[start_pos:match.start()].lower()
+
+            # Skip if preceded by common false positive keywords
+            false_positive_keywords = ['table', 'figure', 'fig.', 'fig', 'appendix', 'section', 'chapter']
+            if any(keyword in context_before for keyword in false_positive_keywords):
+                continue
+
             numbers_str = match.group(1)
             # Handle ranges and lists: [1-3] or [1,2,5]
             numbers = self._parse_numbers(numbers_str)
@@ -195,6 +205,8 @@ class BibliographyParser:
             'references', 'bibliography', 'works cited', 'citations',
             'literature cited', 'sources'
         ]
+        # Endnotes headers (not bibliography, but contain citations)
+        self.endnotes_headers = ['notes', 'endnotes', 'footnotes']
 
     def parse(self, text: str, bib_section_name: str = None) -> Tuple[List[BibEntry], str]:
         """
@@ -239,8 +251,48 @@ class BibliographyParser:
             match = re.search(pattern, text, re.MULTILINE | re.IGNORECASE)
 
             if match:
-                # Return everything after the header
-                return text[match.end():].strip()
+                # Find the next section header (if any) to limit the bibliography section
+                # This prevents including endnotes in the bibliography
+                bib_start = match.end()
+
+                # Look for next major section after bibliography
+                next_section = re.search(
+                    r'^(acknowledgments?|appendix|supplementary materials?)\s*:?\s*$',
+                    text[bib_start:],
+                    re.MULTILINE | re.IGNORECASE
+                )
+
+                if next_section:
+                    return text[bib_start:bib_start + next_section.start()].strip()
+                else:
+                    return text[bib_start:].strip()
+
+        return ""
+
+    def extract_endnotes_section(self, text: str) -> str:
+        """
+        Extract the endnotes/notes section from the document.
+        This section often contains citations that should be parsed.
+        """
+        for header in self.endnotes_headers:
+            # Look for the header (case-insensitive)
+            pattern = r'^' + re.escape(header) + r'\s*:?\s*$'
+            match = re.search(pattern, text, re.MULTILINE | re.IGNORECASE)
+
+            if match:
+                # Find where this section ends (before References/Bibliography)
+                notes_start = match.end()
+
+                # Look for bibliography section that follows
+                for bib_header in self.bib_headers:
+                    bib_pattern = r'^' + re.escape(bib_header) + r'\s*:?\s*$'
+                    bib_match = re.search(bib_pattern, text[notes_start:], re.MULTILINE | re.IGNORECASE)
+
+                    if bib_match:
+                        return text[notes_start:notes_start + bib_match.start()].strip()
+
+                # If no bibliography found after, return rest of document
+                return text[notes_start:].strip()
 
         return ""
 

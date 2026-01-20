@@ -12,7 +12,9 @@ A powerful tool that scans your manuscript drafts to ensure all in-text citation
 - **Detailed Reports**: Clear, color-coded output showing all inconsistencies
 - **Year Mismatch Detection**: Identifies potential year mismatches (e.g., online-first vs. final publication)
 - **Format Detection**: Automatically detects citation style from your document
-- **Flexible Input**: Works with plain text, Markdown, LaTeX, and **Word (.docx)** files
+- **Flexible Input**: Works with plain text, Markdown, LaTeX, Word (.docx), and **PDF** files
+- **Endnotes Support**: Automatically detects and parses citations from endnotes/footnotes sections
+- **Smart Filtering**: Ignores false positives like "Table 1" and "Figure 1"
 - **Robust Parsing**: Correctly handles various bibliography formats including "LastName, FirstName" entries
 - **Standalone Apps**: Can be packaged as Windows .exe or macOS .app (no Python required for end users)
 
@@ -47,7 +49,7 @@ citation-checker-gui
 ```
 
 #### GUI Features:
-- 📁 **Browse** to select your manuscript file (.txt, .md, .docx)
+- 📁 **Browse** to select your manuscript file (.txt, .md, .docx, .pdf)
 - ⚙️ **Configure** optional bibliography section name
 - ▶️ **Click "Check Citations"** to run the analysis
 - 📊 **View** color-coded results instantly
@@ -62,11 +64,14 @@ Both allow distribution to users without Python installed.
 ### Command Line
 
 ```bash
-# Check a manuscript file (supports .txt, .md, .docx)
+# Check a manuscript file (supports .txt, .md, .docx, .pdf)
 citation-checker check manuscript.txt
 
 # Check a Word document
 citation-checker check thesis.docx
+
+# Check a PDF document
+citation-checker check paper.pdf
 
 # Specify custom bibliography section
 citation-checker check manuscript.txt --bib-section "Works Cited"
@@ -86,10 +91,12 @@ from citation_cross_checker import CitationChecker
 # Initialize checker
 checker = CitationChecker()
 
-# Option 1: Check a file directly (supports .txt, .md, .docx)
+# Option 1: Check a file directly (supports .txt, .md, .docx, .pdf)
 result = checker.check_file('manuscript.txt')
 # or
 result = checker.check_file('thesis.docx')
+# or
+result = checker.check_file('paper.pdf')
 
 # Option 2: Check text directly
 with open('manuscript.txt', 'r') as f:

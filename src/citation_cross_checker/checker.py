@@ -28,7 +28,9 @@ class CitationChecker:
         Returns:
             CheckResult object with findings
         """
-        # Parse citations from main text
+        # Parse citations from full text (includes main text AND endnotes)
+        # Note: For papers with endnotes, citations appear in the endnotes section,
+        # so we parse the entire document to capture all citations
         citations = self.citation_parser.parse(text)
 
         # Parse bibliography entries
@@ -64,10 +66,10 @@ class CitationChecker:
         """
         Check a file for citation-bibliography consistency.
 
-        Supports: .txt, .md, .docx files
+        Supports: .txt, .md, .docx, .pdf files
 
         Args:
-            file_path: Path to the manuscript file (.txt, .md, .docx)
+            file_path: Path to the manuscript file (.txt, .md, .docx, .pdf)
             bib_section_name: Optional custom name for bibliography section
 
         Returns:
