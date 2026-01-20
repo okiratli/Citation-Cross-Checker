@@ -41,8 +41,8 @@ class CitationParser:
                     parts = content.split(';')
                 else:
                     # Try to split by comma after year (e.g., "2024, Gidron")
-                    # Split pattern: YYYY[a-z]?,\s+[A-Z]
-                    split_pattern = r'(\d{4}[a-z]?),\s+(?=[A-Z])'
+                    # Split pattern: YYYY[a-z]?,\s+[A-Z] (Unicode-aware for international names)
+                    split_pattern = r'(\d{4}[a-z]?),\s+(?=[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F])'
                     parts_raw = re.split(split_pattern, content)
                     # Reassemble: parts_raw looks like ["Author1", "2024", "Author2 Year2"]
                     # We need to combine them back: ["Author1 2024", "Author2 Year2"]
@@ -198,8 +198,38 @@ class CitationParser:
 
         return False
 
+    def _strip_citation_prefixes(self, text: str) -> str:
+        """
+        Remove common citation prefixes from the author string.
+        Examples: "e.g., Author", "see Author", "cf. Author"
+        """
+        text = text.strip()
+
+        # List of common citation prefixes (case-insensitive)
+        prefixes = [
+            'e.g.,', 'e.g.', 'eg.',
+            'i.e.,', 'i.e.', 'ie.',
+            'cf.', 'cf',
+            'see', 'see also',
+            'but see', 'but cf.',
+            'contra',
+            'compare',
+        ]
+
+        text_lower = text.lower()
+        for prefix in prefixes:
+            if text_lower.startswith(prefix):
+                # Remove the prefix and any following whitespace
+                text = text[len(prefix):].strip()
+                break
+
+        return text
+
     def _parse_authors(self, authors_str: str) -> List[str]:
         """Parse author names from citation."""
+        # Remove citation prefixes (e.g., "e.g.,", "see", "cf.")
+        authors_str = self._strip_citation_prefixes(authors_str)
+
         # Remove "et al." and split by common separators
         authors_str = authors_str.replace('et al.', '').strip()
 
