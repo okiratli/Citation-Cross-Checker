@@ -350,8 +350,9 @@ class BibliographyParser:
                 bib_start = match.end()
 
                 # Look for next major section after bibliography
+                # Include Notes/Endnotes/Footnotes to prevent them from being part of bibliography
                 next_section = re.search(
-                    r'^(acknowledgments?|appendix|supplementary materials?)\s*:?\s*$',
+                    r'^(acknowledgments?|appendix|supplementary materials?|notes|endnotes|footnotes)\s*:?\s*$',
                     text[bib_start:],
                     re.MULTILINE | re.IGNORECASE
                 )
