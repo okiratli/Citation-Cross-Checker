@@ -515,6 +515,10 @@ class BibliographyParser:
                 else:
                     before_year = text[:100]  # Fallback
 
+        # Remove "et al." from bibliography entries (e.g., "Türkoğlu, D. et al. (2022)")
+        # This should be removed before parsing author names
+        before_year = before_year.replace('et al.', '').replace('et al', '').strip()
+
         # Now parse authors from this section
         # Split by '&' or 'and' first (for multiple authors)
         author_parts = re.split(r'\s+&\s+|\s+and\s+', before_year)
