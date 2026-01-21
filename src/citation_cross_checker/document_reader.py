@@ -1,7 +1,11 @@
 """Document reader utilities for various file formats."""
 
+import logging
 from pathlib import Path
 from typing import Union
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 class DocumentReader:
@@ -91,17 +95,19 @@ class DocumentReader:
             footnotes_text = DocumentReader._extract_docx_notes(file_path, 'footnotes')
             if footnotes_text:
                 paragraphs.append("\nFootnotes:\n" + footnotes_text)
-        except Exception:
-            # If footnote extraction fails, continue without them
-            pass
+                logger.info(f"Extracted {len(footnotes_text.splitlines())} footnotes from document")
+        except Exception as e:
+            # If footnote extraction fails, log warning but continue without them
+            logger.warning(f"Failed to extract footnotes from {file_path}: {e}")
 
         try:
             endnotes_text = DocumentReader._extract_docx_notes(file_path, 'endnotes')
             if endnotes_text:
                 paragraphs.append("\nEndnotes:\n" + endnotes_text)
-        except Exception:
-            # If endnote extraction fails, continue without them
-            pass
+                logger.info(f"Extracted {len(endnotes_text.splitlines())} endnotes from document")
+        except Exception as e:
+            # If endnote extraction fails, log warning but continue without them
+            logger.warning(f"Failed to extract endnotes from {file_path}: {e}")
 
         return '\n'.join(paragraphs)
 
@@ -116,11 +122,14 @@ class DocumentReader:
 
         Returns:
             Extracted notes text
+
+        Note:
+            .docx files are ZIP archives. Footnotes are stored in word/footnotes.xml
+            and endnotes in word/endnotes.xml as separate XML parts.
         """
         import zipfile
         from xml.etree import ElementTree as ET
 
-        # .docx files are actually zip archives
         notes_text = []
 
         try:
@@ -130,6 +139,8 @@ class DocumentReader:
                 note_file = f'word/{note_type}.xml'
 
                 if note_file not in docx_zip.namelist():
+                    # No footnotes/endnotes file - this is normal for documents without them
+                    logger.debug(f"No {note_type}.xml found in {file_path}")
                     return ""
 
                 # Read and parse the notes XML
@@ -142,7 +153,8 @@ class DocumentReader:
                 }
 
                 # Find all footnote/endnote elements
-                for note in root.findall('.//w:footnote' if note_type == 'footnotes' else './/w:endnote', namespaces):
+                element_name = 'w:footnote' if note_type == 'footnotes' else 'w:endnote'
+                for note in root.findall(f'.//{element_name}', namespaces):
                     # Get the note ID
                     note_id = note.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}id')
 
@@ -162,9 +174,17 @@ class DocumentReader:
                         # Format as "note_id note_text"
                         notes_text.append(f"{note_id} {note_text}")
 
-        except Exception:
-            # If anything goes wrong, return empty string
-            return ""
+                logger.debug(f"Extracted {len(notes_text)} {note_type} from {file_path}")
+
+        except zipfile.BadZipFile as e:
+            logger.error(f"Invalid .docx file (not a valid ZIP archive): {file_path}")
+            raise
+        except ET.ParseError as e:
+            logger.error(f"Failed to parse {note_type}.xml from {file_path}: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error extracting {note_type} from {file_path}: {e}")
+            raise
 
         return '\n'.join(notes_text)
 
