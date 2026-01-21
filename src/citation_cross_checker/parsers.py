@@ -86,11 +86,11 @@ class CitationParser:
 
         # Parse narrative citations (Author (Year))
         # Used in APA, Harvard, and Chicago styles
-        # Pattern: "Brown (2018)", "Smith and Jones (2020)", or "Gidron, Adams, and Horne (2019)"
-        # Handles 1+ authors with commas, "and", or "&" as separators
+        # Pattern: "Brown (2018)", "Smith and Jones (2020)", "Gidron, Adams, and Horne (2019)", or "Smith et al. (2020)"
+        # Handles 1+ authors with commas, "and", or "&" as separators, plus optional "et al."
         # Unicode-aware: includes extended Latin characters
         # Negative lookbehind (?<!,\s) prevents matching authors in middle of comma-separated lists
-        narrative_pattern = r'(?<!,\s)([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+(?:(?:,\s+(?:and\s+|&\s+)?|\s+(?:and|&)\s+)[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+)*)\s+\((\d{4}[a-z]?)\)'
+        narrative_pattern = r'(?<!,\s)([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+(?:(?:,\s+(?:and\s+|&\s+)?|\s+(?:and|&)\s+)[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+)*)(?:\s+et\s+al\.?)?\s+\((\d{4}[a-z]?)\)'
         for match in re.finditer(narrative_pattern, text):
             # Skip if already parsed
             if any(start <= match.start() < end for start, end in parsed_positions):
@@ -107,6 +107,53 @@ class CitationParser:
 
             citation = Citation(
                 raw_text=match.group(0),
+                authors=authors,
+                year=year,
+                position=match.start(),
+                citation_type="author-year"
+            )
+            citations.append(citation)
+            parsed_positions.add((match.start(), match.end()))
+
+        # Parse bare citations (Author Year) without parentheses
+        # Common in endnotes/footnotes: "Smith 2020" or "Smith and Jones 2020"
+        # To avoid false positives, match only when followed by period, semicolon, or end of sentence
+        # Pattern matches: "Aytaç and Elçi 2018.", "Suuronen 2025;", "Levitsky and Ziblatt 2025."
+        # Note: No negative lookbehind here (unlike narrative pattern) to allow matching after "e.g.," prefixes
+        bare_citation_pattern = r'([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+(?:(?:,\s+(?:and\s+|&\s+)?|\s+(?:and|&)\s+)[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+)*)(?:\s+et\s+al\.?)?\s+(\d{4}[a-z]?)(?=[\.;,:\s]|$)'
+        for match in re.finditer(bare_citation_pattern, text):
+            # Skip if already parsed
+            if any(start <= match.start() < end for start, end in parsed_positions):
+                continue
+
+            authors_str = match.group(1).strip()
+            year = match.group(2).strip()
+
+            # Filter out non-author patterns
+            if self._is_non_author_pattern(authors_str):
+                continue
+
+            # Additional check: skip if this looks like it's in a bibliography entry
+            # Bibliography entries typically have format: "LastName, FirstName. Year."
+            # Check for comma between first and second word
+            start_pos = max(0, match.start() - 50)
+            context_before = text[start_pos:match.start()]
+
+            # Skip if preceded by a comma and initial (bibliography format: "Smith, J. 2020")
+            if re.search(r',\s+[A-Z]\.\s*$', context_before):
+                continue
+
+            authors = self._parse_authors(authors_str)
+
+            # Build raw text including the matched year and terminating punctuation if present
+            raw_end = match.end()
+            if raw_end < len(text) and text[raw_end] in '.;,:':
+                raw_text = text[match.start():raw_end + 1].rstrip('.,;:')
+            else:
+                raw_text = match.group(0)
+
+            citation = Citation(
+                raw_text=raw_text,
                 authors=authors,
                 year=year,
                 position=match.start(),
