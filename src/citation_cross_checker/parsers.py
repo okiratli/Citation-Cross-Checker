@@ -86,11 +86,11 @@ class CitationParser:
 
         # Parse narrative citations (Author (Year))
         # Used in APA, Harvard, and Chicago styles
-        # Pattern: "Brown (2018)", "Smith and Jones (2020)", or "Gidron, Adams, and Horne (2019)"
-        # Handles 1+ authors with commas, "and", or "&" as separators
+        # Pattern: "Brown (2018)", "Smith and Jones (2020)", "Gidron, Adams, and Horne (2019)", or "Smith et al. (2020)"
+        # Handles 1+ authors with commas, "and", or "&" as separators, plus optional "et al."
         # Unicode-aware: includes extended Latin characters
         # Negative lookbehind (?<!,\s) prevents matching authors in middle of comma-separated lists
-        narrative_pattern = r'(?<!,\s)([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+(?:(?:,\s+(?:and\s+|&\s+)?|\s+(?:and|&)\s+)[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+)*)\s+\((\d{4}[a-z]?)\)'
+        narrative_pattern = r'(?<!,\s)([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+(?:(?:,\s+(?:and\s+|&\s+)?|\s+(?:and|&)\s+)[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+)*)(?:\s+et\s+al\.?)?\s+\((\d{4}[a-z]?)\)'
         for match in re.finditer(narrative_pattern, text):
             # Skip if already parsed
             if any(start <= match.start() < end for start, end in parsed_positions):
