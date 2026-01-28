@@ -5,16 +5,30 @@ from typing import List, Tuple
 from .models import Citation, BibEntry
 
 
+# Pattern for name prefixes (van, de, von, etc.)
+# Common in Dutch, German, French, Spanish, Italian, Arabic names
+# Used by both CitationParser and BibliographyParser
+# Handles multi-word prefixes like "de la", "van de", "van der", "van den"
+# Multi-word prefixes must come FIRST in alternation to match before single-word ones
+# Case-insensitive to handle both "van Prooijen" and "Van Prooijen"
+NAME_PREFIX = r"(?:(?:[Vv]an\s+[Dd]e[rn]?|[Vv]on\s+[Dd]e[rn]?|[Dd]e\s+[Ll][ae]|[Dd]e\s+[Ll]as|[Vv]an|[Dd]e|[Vv]on|[Dd]er|[Dd]en|[Dd]el|[Dd]ella|[Dd]i|[Dd]a|[Ll]e|[Ll]a|[Ee]l|[Aa]l|[Bb]in|[Ii]bn|[Tt]e|[Tt]er|[Tt]en|[Oo]p|[Aa]an|[Uu]it|[Oo]ver|'[Tt]|[Dd]'|[Ll]')\s+)?"
+
+
 class CitationParser:
     """Parses in-text citations from manuscript text."""
+
+    # Author name pattern with optional prefix
+    # Handles: "Smith", "van Prooijen", "de la Cruz", "von Neumann"
+    AUTHOR_NAME = NAME_PREFIX + r'[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+'
 
     # Author-year styles: APA, Harvard, Chicago
     # Patterns: (Author, Year), (Author Year), (Author et al., Year)
     # Unicode-aware: includes extended Latin characters (e.g., Ç, Ğ, İ, Ş for Turkish names)
-    AUTHOR_YEAR_PATTERN = r'\(([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\s&,]+(?:\set\sal\.)?),\s*(\d{4}[a-z]?)\)'
+    # Now supports name prefixes: (van Prooijen, 2020)
+    AUTHOR_YEAR_PATTERN = r'\((' + NAME_PREFIX + r'[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\s&,]+(?:\set\sal\.)?),\s*(\d{4}[a-z]?)\)'
 
     # MLA style: (Author Page) or (Author et al. Page)
-    MLA_PATTERN = r'\(([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\s&]+(?:\set\sal\.)?)\s+(\d+(?:-\d+)?)\)'
+    MLA_PATTERN = r'\((' + NAME_PREFIX + r'[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\s&]+(?:\set\sal\.)?)\s+(\d+(?:-\d+)?)\)'
 
     # Numeric/IEEE: [1], [1-3], [1,2,3]
     NUMERIC_PATTERN = r'\[(\d+(?:\s*[-,]\s*\d+)*)\]'
@@ -40,9 +54,10 @@ class CitationParser:
                     # Traditional semicolon-separated
                     parts = content.split(';')
                 else:
-                    # Try to split by comma after year (e.g., "2024, Gidron")
-                    # Split pattern: YYYY[a-z]?,\s+[A-Z] (Unicode-aware for international names)
-                    split_pattern = r'(\d{4}[a-z]?),\s+(?=[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F])'
+                    # Try to split by comma after year (e.g., "2024, Gidron" or "2024, van Prooijen")
+                    # Split pattern: YYYY[a-z]?,\s+[A-Z] or YYYY[a-z]?,\s+prefix [A-Z]
+                    # Unicode-aware for international names and handles name prefixes (van, de, etc.)
+                    split_pattern = r'(\d{4}[a-z]?),\s+(?=' + NAME_PREFIX + r'?[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F])'
                     parts_raw = re.split(split_pattern, content)
                     # Reassemble: parts_raw looks like ["Author1", "2024", "Author2 Year2"]
                     # We need to combine them back: ["Author1 2024", "Author2 Year2"]
@@ -62,8 +77,8 @@ class CitationParser:
                         continue
                     # Extract author and year from each part
                     # Comma is optional to support both APA (Author, Year) and Harvard/Chicago (Author Year)
-                    # Unicode-aware: includes extended Latin characters
-                    cite_match = re.search(r'([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\s&,]+(?:\set\sal\.)?),?\s*(\d{4}[a-z]?)', part)
+                    # Unicode-aware: includes extended Latin characters and name prefixes (van, de, etc.)
+                    cite_match = re.search(r'(' + NAME_PREFIX + r'[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\s&,]+(?:\set\sal\.)?),?\s*(\d{4}[a-z]?)', part)
                     if cite_match:
                         authors_str = cite_match.group(1).strip()
                         year = cite_match.group(2).strip()
@@ -86,11 +101,11 @@ class CitationParser:
 
         # Parse narrative citations (Author (Year))
         # Used in APA, Harvard, and Chicago styles
-        # Pattern: "Brown (2018)", "Smith and Jones (2020)", "Gidron, Adams, and Horne (2019)", or "Smith et al. (2020)"
+        # Pattern: "Brown (2018)", "Smith and Jones (2020)", "van Prooijen (2020)", "Gidron, Adams, and Horne (2019)", or "Smith et al. (2020)"
         # Handles 1+ authors with commas, "and", or "&" as separators, plus optional "et al."
-        # Unicode-aware: includes extended Latin characters
+        # Unicode-aware: includes extended Latin characters and name prefixes (van, de, von, etc.)
         # Negative lookbehind (?<!,\s) prevents matching authors in middle of comma-separated lists
-        narrative_pattern = r'(?<!,\s)([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+(?:(?:,\s+(?:and\s+|&\s+)?|\s+(?:and|&)\s+)[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+)*)(?:\s+et\s+al\.?)?\s+\((\d{4}[a-z]?)\)'
+        narrative_pattern = r'(?<!,\s)(' + NAME_PREFIX + r'[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+(?:(?:,\s+(?:and\s+|&\s+)?|\s+(?:and|&)\s+)' + NAME_PREFIX + r'[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+)*)(?:\s+et\s+al\.?)?\s+\((\d{4}[a-z]?)\)'
         for match in re.finditer(narrative_pattern, text):
             # Skip if already parsed
             if any(start <= match.start() < end for start, end in parsed_positions):
@@ -141,7 +156,7 @@ class CitationParser:
 
         # Only parse bare citations if we found notes sections
         if notes_sections:
-            bare_citation_pattern = r'([A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+(?:(?:,\s+(?:and\s+|&\s+)?|\s+(?:and|&)\s+)[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+)*)(?:\s+et\s+al\.?)?\s+(\d{4}[a-z]?)(?=[\.;,:\s]|$)'
+            bare_citation_pattern = r'(' + NAME_PREFIX + r'[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+(?:(?:,\s+(?:and\s+|&\s+)?|\s+(?:and|&)\s+)' + NAME_PREFIX + r'[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+)*)(?:\s+et\s+al\.?)?\s+(\d{4}[a-z]?)(?=[\.;,:\s]|$)'
             for match in re.finditer(bare_citation_pattern, text):
                 # Skip if already parsed
                 if any(start <= match.start() < end for start, end in parsed_positions):
@@ -518,10 +533,10 @@ class BibliographyParser:
                 continue
 
             # Check if this line starts a new bibliography entry
-            # Typical patterns: "LastName, FirstName" or "LastName, F."
-            # Look for: Capital letter, followed by letters, then comma, then space, then capital letter
-            # Unicode-aware: includes extended Latin characters
-            is_new_entry = re.match(r'^[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+,\s+[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F]', line)
+            # Typical patterns: "LastName, FirstName" or "LastName, F." or "van Prooijen, J."
+            # Look for: Optional prefix + Capital letter, followed by letters, then comma, then space, then capital letter
+            # Unicode-aware: includes extended Latin characters and name prefixes (van, de, von, etc.)
+            is_new_entry = re.match(r'^' + NAME_PREFIX + r'[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+,\s+[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F]', line)
 
             if is_new_entry and current_entry:
                 # Process previous entry
