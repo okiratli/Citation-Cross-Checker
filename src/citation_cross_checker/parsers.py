@@ -539,14 +539,15 @@ class BibliographyParser:
 
             # Check if this line starts a new bibliography entry
             # Typical patterns:
-            #   "LastName, FirstName..."  (APA/Chicago)
-            #   "LastName RW (Year)..."   (Harvard with initials before year)
+            #   "LastName, F..."   (APA/Chicago: comma then initial)
+            #   "LastName AB ..."  (Harvard: initials directly after name)
             # Unicode-aware: includes extended Latin characters and name prefixes (van, de, von, etc.)
             is_new_entry = re.match(
                 r'^' + NAME_PREFIX + r'[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+'
                 r'(?:'
-                r',\s+[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F]'   # "LastName, F..." (APA/Chicago)
-                r'|\s+[A-Z]{1,5}(?:\s+[A-Z]{1,5})*\s+\('              # "LastName AB (Year)" (Harvard)
+                r',\s+[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F]'  # "LastName, F..." (APA/Chicago)
+                r'|\s+[A-Z][A-Z]'                                       # "LastName AB..." (Harvard 2+ char initials)
+                r'|\s+[A-Z](?=[,\s])'                                   # "LastName S,..." (Harvard single initial)
                 r')',
                 line
             )
