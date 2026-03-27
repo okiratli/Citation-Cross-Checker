@@ -652,8 +652,18 @@ class BibliographyParser:
                         continue
 
                     if i == 0:
-                        # First part is always the first author's last name
-                        authors.append(comma_part)
+                        # First part is the first author's last name.
+                        # In Harvard style it may include initials: "Haug S" → "Haug"
+                        words = comma_part.split()
+                        if len(words) > 1:
+                            last_word_clean = words[-1].replace('.', '')
+                            if last_word_clean.isupper():
+                                # "Haug S" or "Milner HV" → take first word as last name
+                                authors.append(words[0])
+                            else:
+                                authors.append(comma_part)
+                        else:
+                            authors.append(comma_part)
                     else:
                         # Check if this is a subsequent author (FirstName LastName)
                         # or just the first author's first name/initials
