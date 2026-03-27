@@ -1,5 +1,6 @@
 """Main citation cross-checking logic."""
 
+import re
 from typing import Optional
 from .models import CheckResult, Citation, BibEntry, YearMismatch
 from .parsers import CitationParser, BibliographyParser
@@ -28,13 +29,15 @@ class CitationChecker:
         Returns:
             CheckResult object with findings
         """
-        # Parse citations from full text (includes main text AND endnotes)
-        # Note: For papers with endnotes, citations appear in the endnotes section,
-        # so we parse the entire document to capture all citations
-        citations = self.citation_parser.parse(text)
-
-        # Parse bibliography entries
+        # Parse bibliography entries first so we know where the section starts
         bib_entries, bib_text = self.bib_parser.parse(text, bib_section_name)
+
+        # Parse citations from text BEFORE the bibliography section.
+        # This prevents bibliography entries (e.g. "Hine DW and Montiel CJ (1999)")
+        # from being mis-parsed as in-text citations.
+        # Endnotes/footnotes appear before the bibliography, so they are still included.
+        text_for_citations = self._text_before_bibliography(text, bib_section_name)
+        citations = self.citation_parser.parse(text_for_citations)
 
         # Find citations without matching bibliography entries
         missing_bib_entries = self._find_missing_bib_entries(citations, bib_entries)
@@ -172,3 +175,15 @@ class CitationChecker:
                         processed_pairs.add(pair_key)
 
         return mismatches
+
+    def _text_before_bibliography(self, text: str, bib_section_name: Optional[str] = None) -> str:
+        """Return the portion of the document before the bibliography section."""
+        headers = [bib_section_name] if bib_section_name else self.bib_parser.bib_headers
+        for header in headers:
+            if not header:
+                continue
+            pattern = r'^' + re.escape(header) + r'\s*:?\s*$'
+            match = re.search(pattern, text, re.MULTILINE | re.IGNORECASE)
+            if match:
+                return text[:match.start()]
+        return text
