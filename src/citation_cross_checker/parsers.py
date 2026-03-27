@@ -654,13 +654,14 @@ class BibliographyParser:
 
                     if i == 0:
                         # First part is the first author's last name.
-                        # In Harvard style it may include initials: "Haug S" → "Haug"
+                        # In Harvard style it may include initials: "Haug S" → "Haug",
+                        # "Van Belle DA" → "Van Belle"
                         words = comma_part.split()
                         if len(words) > 1:
                             last_word_clean = words[-1].replace('.', '')
                             if last_word_clean.isupper():
-                                # "Haug S" or "Milner HV" → take first word as last name
-                                authors.append(words[0])
+                                # Strip trailing initials, keep the rest as last name
+                                authors.append(' '.join(words[:-1]))
                             else:
                                 authors.append(comma_part)
                         else:
@@ -688,10 +689,11 @@ class BibliographyParser:
                     real_words = [w for w in words if len(w.replace('.', '')) > 1]
                     if real_words:
                         # Check if last word is all-uppercase initials (e.g., "RW", "JK")
-                        # Harvard format: "Stone RW" → lastname is first word, not last
+                        # Harvard format: "Stone RW" → "Stone", "Van Belle DA" → "Van Belle"
                         last_word_clean = real_words[-1].replace('.', '')
                         if last_word_clean.isupper() and len(real_words) > 1:
-                            authors.append(real_words[0])
+                            # Strip trailing initials, keep everything before as last name
+                            authors.append(' '.join(real_words[:-1]))
                         else:
                             authors.append(real_words[-1])
                     elif words:
