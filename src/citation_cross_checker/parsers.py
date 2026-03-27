@@ -118,6 +118,11 @@ class CitationParser:
             if self._is_non_author_pattern(authors_str):
                 continue
 
+            # Skip if the matched "author" is all-uppercase initials (e.g., "RW" from "Stone RW (2008)")
+            clean_author = authors_str.replace('.', '').replace(' ', '')
+            if clean_author.isupper() and len(clean_author) <= 5:
+                continue
+
             authors = self._parse_authors(authors_str)
 
             citation = Citation(
@@ -533,10 +538,18 @@ class BibliographyParser:
                 continue
 
             # Check if this line starts a new bibliography entry
-            # Typical patterns: "LastName, FirstName" or "LastName, F." or "van Prooijen, J."
-            # Look for: Optional prefix + Capital letter, followed by letters, then comma, then space, then capital letter
+            # Typical patterns:
+            #   "LastName, FirstName..."  (APA/Chicago)
+            #   "LastName RW (Year)..."   (Harvard with initials before year)
             # Unicode-aware: includes extended Latin characters and name prefixes (van, de, von, etc.)
-            is_new_entry = re.match(r'^' + NAME_PREFIX + r'[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+,\s+[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F]', line)
+            is_new_entry = re.match(
+                r'^' + NAME_PREFIX + r'[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F][a-zA-Z\u00C0-\u024F\'\-]+'
+                r'(?:'
+                r',\s+[A-Z\u00C0-\u00D6\u00D8-\u00DE\u0100-\u024F]'   # "LastName, F..." (APA/Chicago)
+                r'|\s+[A-Z]{1,5}(?:\s+[A-Z]{1,5})*\s+\('              # "LastName AB (Year)" (Harvard)
+                r')',
+                line
+            )
 
             if is_new_entry and current_entry:
                 # Process previous entry
@@ -657,14 +670,19 @@ class BibliographyParser:
                             authors.append(real_words[0])
                         # else: Just initials - skip (likely first author's first name)
             else:
-                # No comma, might be "FirstName LastName" format or just "LastName"
-                # Take the last word as the last name
+                # No comma, might be "FirstName LastName", "LastName Initials", or just "LastName"
                 words = author_part.strip().split()
                 if words:
                     # Filter out initials (single letters with periods)
                     real_words = [w for w in words if len(w.replace('.', '')) > 1]
                     if real_words:
-                        authors.append(real_words[-1])
+                        # Check if last word is all-uppercase initials (e.g., "RW", "JK")
+                        # Harvard format: "Stone RW" → lastname is first word, not last
+                        last_word_clean = real_words[-1].replace('.', '')
+                        if last_word_clean.isupper() and len(real_words) > 1:
+                            authors.append(real_words[0])
+                        else:
+                            authors.append(real_words[-1])
                     elif words:
                         authors.append(words[-1])
 
