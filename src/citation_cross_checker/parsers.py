@@ -99,6 +99,18 @@ class CitationParser:
                         citations.append(citation)
                         parsed_positions.add((match.start(), match.end()))
 
+                        # Handle multi-year citations: "Author et al. 2023, 2024"
+                        # Create an extra citation for each additional year after the main one
+                        remaining = part[cite_match.end():]
+                        for extra_year in re.findall(r',\s*(\d{4}[a-z]?)\b', remaining):
+                            citations.append(Citation(
+                                raw_text=f"({part})",
+                                authors=authors,
+                                year=extra_year,
+                                position=match.start(),
+                                citation_type="author-year"
+                            ))
+
         # Parse narrative citations (Author (Year))
         # Used in APA, Harvard, and Chicago styles
         # Pattern: "Brown (2018)", "Smith and Jones (2020)", "van Prooijen (2020)", "Gidron, Adams, and Horne (2019)", or "Smith et al. (2020)"
@@ -676,11 +688,13 @@ class BibliographyParser:
                             # Multiple words - this is a subsequent author in "FirstName LastName" format
                             # Extract last word as last name
                             authors.append(real_words[-1])
-                        elif len(real_words) == 1 and len(real_words[0]) > 2:
+                        elif len(real_words) == 1 and len(real_words[0]) > 2 and i > 1:
                             # Single word but long enough to be a last name (not just initials)
                             # E.g., "Gentzkow" in "Boxell, L., Gentzkow, M."
+                            # Skip i==1: it is always the first author's given name
+                            # (e.g. "Marina" in "Nord, Marina, Martin Lundstedt...")
                             authors.append(real_words[0])
-                        # else: Just initials - skip (likely first author's first name)
+                        # else: Just initials or first author's given name - skip
             else:
                 # No comma, might be "FirstName LastName", "LastName Initials", or just "LastName"
                 words = author_part.strip().split()
