@@ -568,7 +568,10 @@ class BibliographyParser:
             # contains a year — otherwise the line is a continuation of a long
             # multi-author entry that has wrapped onto multiple lines.
             current_text = ' '.join(current_entry)
-            current_has_year = bool(re.search(r'\b\d{4}\b', current_text))
+            current_has_year = bool(re.search(
+                r'\b\d{4}\b|forthcoming|in\s+press|n\.d\.',
+                current_text, re.IGNORECASE
+            ))
 
             if is_new_entry and current_entry and current_has_year:
                 # Process previous entry
