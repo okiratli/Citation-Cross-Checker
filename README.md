@@ -11,6 +11,7 @@ A powerful tool that scans your manuscript drafts to ensure all in-text citation
 - **Bidirectional Checking**: Verifies citations have bibliography entries AND bibliography entries are cited
 - **Detailed Reports**: Clear, color-coded output showing all inconsistencies
 - **Year Mismatch Detection**: Identifies potential year mismatches (e.g., online-first vs. final publication)
+- **Author Spelling Mismatch Detection**: Flags potential author name typos between in-text citations and bibliography entries (e.g., "Koce" vs. "Koch", "William" vs. "Williams")
 - **Format Detection**: Automatically detects citation style from your document
 - **Flexible Input**: Works with plain text, Markdown, LaTeX, Word (.docx), and **PDF** files
 - **Endnotes Support**: Automatically detects and parses citations from endnotes/footnotes sections
@@ -164,12 +165,18 @@ POTENTIAL YEAR MISMATCHES:
   ⚠  Citation: (Garcia, 2022) (year: 2022)
       Bibliography: Garcia, 2023 (year: 2023)
 
+POTENTIAL AUTHOR SPELLING MISMATCHES:
+(Citation author name is 1-2 characters different from a bibliography entry)
+  ⚠  Citation: Smyth (2018)
+      Bibliography: Smith, 2018 (1 character difference)
+
 SUMMARY:
 Total in-text citations: 5
 Total bibliography entries: 5
 Missing bibliography entries: 1
 Uncited references: 1
 Potential year mismatches: 1
+Potential author spelling mismatches: 1
 
 Status: INCONSISTENCIES FOUND
 ```
