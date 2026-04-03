@@ -2,9 +2,33 @@
 
 import re
 from typing import Optional
-from .models import CheckResult, Citation, BibEntry, YearMismatch
+from .models import CheckResult, Citation, BibEntry, YearMismatch, AuthorMismatch
 from .parsers import CitationParser, BibliographyParser
 from .document_reader import DocumentReader
+
+
+def _levenshtein(a: str, b: str) -> int:
+    """Compute the Levenshtein edit distance between two strings."""
+    if a == b:
+        return 0
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        curr = [i]
+        for j, cb in enumerate(b, 1):
+            curr.append(min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = curr
+    return prev[-1]
+
+
+def _normalize_last_name(name: str) -> str:
+    """Extract and normalise the last name from an author string."""
+    name = name.replace('.', '').replace(',', '').strip()
+    words = name.split()
+    return words[-1].lower() if words else name.lower()
 
 
 class CitationChecker:
@@ -53,12 +77,20 @@ class CitationChecker:
             bib_entries
         )
 
+        # Find potential author spelling mismatches
+        author_mismatches = self._find_author_mismatches(
+            missing_bib_entries,
+            bib_entries,
+            year_mismatches
+        )
+
         return CheckResult(
             citations=citations,
             bib_entries=bib_entries,
             missing_bib_entries=missing_bib_entries,
             uncited_references=uncited_references,
-            year_mismatches=year_mismatches
+            year_mismatches=year_mismatches,
+            author_mismatches=author_mismatches
         )
 
     def check_file(
@@ -173,6 +205,66 @@ class CitationChecker:
                             bib_entry=bib_entry
                         ))
                         processed_pairs.add(pair_key)
+
+        return mismatches
+
+    def _find_author_mismatches(
+        self,
+        missing_bib_entries: list[Citation],
+        all_bib_entries: list[BibEntry],
+        year_mismatches: list[YearMismatch]
+    ) -> list[AuthorMismatch]:
+        """
+        Find potential author name spelling mismatches.
+
+        For each unmatched citation, look for a bibliography entry whose
+        first-author last name differs by at most 2 characters (Levenshtein
+        distance) and whose year matches (or is absent in one side).
+        Pairs already flagged as year mismatches are excluded to avoid
+        reporting the same pair twice.
+        """
+        mismatches = []
+        processed_pairs = set()
+
+        # Build a set of (citation id, bib id) pairs already covered by year mismatches
+        year_mismatch_pairs = {(id(ym.citation), id(ym.bib_entry)) for ym in year_mismatches}
+
+        for citation in missing_bib_entries:
+            if citation.citation_type in ("numeric", "ieee"):
+                continue
+            if not citation.authors:
+                continue
+
+            cit_last = _normalize_last_name(citation.authors[0])
+
+            for bib_entry in all_bib_entries:
+                if not bib_entry.authors:
+                    continue
+
+                bib_last = _normalize_last_name(bib_entry.authors[0])
+
+                # Skip exact matches (already handled by the main matching logic)
+                if cit_last == bib_last:
+                    continue
+
+                # Skip if years are both present and differ (that's a year mismatch)
+                if citation.year and bib_entry.year and citation.year != bib_entry.year:
+                    continue
+
+                dist = _levenshtein(cit_last, bib_last)
+                if dist < 1 or dist > 2:
+                    continue
+
+                pair_key = (id(citation), id(bib_entry))
+                if pair_key in year_mismatch_pairs or pair_key in processed_pairs:
+                    continue
+
+                mismatches.append(AuthorMismatch(
+                    citation=citation,
+                    bib_entry=bib_entry,
+                    edit_distance=dist
+                ))
+                processed_pairs.add(pair_key)
 
         return mismatches
 

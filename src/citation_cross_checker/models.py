@@ -46,8 +46,11 @@ class Citation:
 
         # Match if the last names are the same or one contains the other
         if citation_first != bib_first:
-            # Allow partial match (e.g., "Smith-Jones" matches "Smith")
-            if citation_first not in bib_first and bib_first not in citation_first:
+            # Allow partial match only for longer names (>=5 chars) to handle
+            # compound names like "Smith-Jones" matching "Smith", while still
+            # catching short typos like "Smit" vs "Smith".
+            shorter = min(citation_first, bib_first, key=len)
+            if len(shorter) < 5 or (citation_first not in bib_first and bib_first not in citation_first):
                 return False
 
         # If year is present in both, it must match
@@ -135,6 +138,18 @@ class YearMismatch:
 
 
 @dataclass
+class AuthorMismatch:
+    """Represents a potential author name spelling mismatch between citation and bibliography."""
+
+    citation: Citation
+    bib_entry: BibEntry
+    edit_distance: int  # Number of character differences (1 or 2)
+
+    def __str__(self):
+        return f"Citation {self.citation.raw_text} vs Bibliography {self.bib_entry.get_key()}"
+
+
+@dataclass
 class CheckResult:
     """Results of citation cross-checking."""
 
@@ -143,10 +158,14 @@ class CheckResult:
     missing_bib_entries: List[Citation]  # Citations without matching bib entries
     uncited_references: List[BibEntry]  # Bib entries never cited
     year_mismatches: List[YearMismatch]  # Potential year mismatches
+    author_mismatches: List[AuthorMismatch]  # Potential author spelling mismatches
 
     def has_issues(self) -> bool:
         """Return True if any inconsistencies were found."""
-        return bool(self.missing_bib_entries or self.uncited_references or self.year_mismatches)
+        return bool(
+            self.missing_bib_entries or self.uncited_references
+            or self.year_mismatches or self.author_mismatches
+        )
 
     def generate_report(self, use_colors: bool = True) -> str:
         """Generate a human-readable report."""

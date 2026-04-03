@@ -18,6 +18,7 @@ class ReportFormatter:
                 self.GREEN = '\033[92m'
                 self.YELLOW = '\033[93m'
                 self.BLUE = '\033[94m'
+                self.MAGENTA = '\033[95m'
                 self.BOLD = '\033[1m'
                 self.RESET = '\033[0m'
             except ImportError:
@@ -31,6 +32,7 @@ class ReportFormatter:
         self.GREEN = ''
         self.YELLOW = ''
         self.BLUE = ''
+        self.MAGENTA = ''
         self.BOLD = ''
         self.RESET = ''
 
@@ -76,6 +78,17 @@ class ReportFormatter:
                 lines.append(f"      Bibliography: {bib_key} (year: {bib_year})")
             lines.append("")
 
+        # Author spelling mismatches
+        if result.author_mismatches:
+            lines.append(f"{self.MAGENTA}{self.BOLD}POTENTIAL AUTHOR SPELLING MISMATCHES:{self.RESET}")
+            lines.append(f"{self.MAGENTA}(Citation author name is 1–2 characters different from a bibliography entry){self.RESET}")
+            for mismatch in result.author_mismatches:
+                bib_key = mismatch.bib_entry.get_key()
+                diff = mismatch.edit_distance
+                lines.append(f"  {self.MAGENTA}⚠{self.RESET}  Citation: {mismatch.citation.raw_text}")
+                lines.append(f"      Bibliography: {bib_key} ({diff} character difference)")
+            lines.append("")
+
         # Summary
         lines.append(f"{self.BOLD}SUMMARY:{self.RESET}")
         lines.append(f"  Total in-text citations: {len(result.citations)}")
@@ -83,6 +96,7 @@ class ReportFormatter:
         lines.append(f"  Missing bibliography entries: {self.RED}{len(result.missing_bib_entries)}{self.RESET}")
         lines.append(f"  Uncited references: {self.YELLOW}{len(result.uncited_references)}{self.RESET}")
         lines.append(f"  Potential year mismatches: {self.BLUE}{len(result.year_mismatches)}{self.RESET}")
+        lines.append(f"  Potential author spelling mismatches: {self.MAGENTA}{len(result.author_mismatches)}{self.RESET}")
         lines.append("")
 
         # Status
