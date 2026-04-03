@@ -46,11 +46,12 @@ class Citation:
 
         # Match if the last names are the same or one contains the other
         if citation_first != bib_first:
-            # Allow partial match only for longer names (>=5 chars) to handle
-            # compound names like "Smith-Jones" matching "Smith", while still
-            # catching short typos like "Smit" vs "Smith".
-            shorter = min(citation_first, bib_first, key=len)
-            if len(shorter) < 5 or (citation_first not in bib_first and bib_first not in citation_first):
+            # Only allow substring match when the length difference is >= 3,
+            # which covers compound names like "Smith" matching "Smith-Jones"
+            # (diff=5) while blocking near-typos like "William" vs "Williams"
+            # (diff=1) or "Smit" vs "Smith" (diff=1).
+            length_diff = abs(len(citation_first) - len(bib_first))
+            if length_diff < 3 or (citation_first not in bib_first and bib_first not in citation_first):
                 return False
 
         # If year is present in both, it must match
