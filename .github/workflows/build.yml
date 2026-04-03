@@ -1,0 +1,88 @@
+name: Build Executables
+
+on:
+  push:
+    branches:
+      - main
+      - claude/citation-cross-checker-xpW4P
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build exe
+        run: |
+          python -m PyInstaller `
+            --name="Citation-Cross-Checker" `
+            --windowed `
+            --onefile `
+            --add-data "src/citation_cross_checker;citation_cross_checker" `
+            --hidden-import=tkinter `
+            --hidden-import=tkinter.ttk `
+            --hidden-import=tkinter.messagebox `
+            --hidden-import=tkinter.filedialog `
+            --hidden-import=tkinter.scrolledtext `
+            --hidden-import=docx `
+            --hidden-import=pypdf `
+            --hidden-import=colorama `
+            --hidden-import=click `
+            --hidden-import=xml.etree.ElementTree `
+            launch_gui.py
+
+      - name: Upload exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: Citation-Cross-Checker-Windows
+          path: dist/Citation-Cross-Checker.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Tk
+        run: brew install python-tk@3.11
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build app
+        run: |
+          python -m PyInstaller \
+            --name="Citation-Cross-Checker" \
+            --windowed \
+            --add-data "src/citation_cross_checker:citation_cross_checker" \
+            --hidden-import=tkinter \
+            --hidden-import=tkinter.ttk \
+            --hidden-import=tkinter.messagebox \
+            --hidden-import=tkinter.filedialog \
+            --hidden-import=tkinter.scrolledtext \
+            --hidden-import=docx \
+            --hidden-import=pypdf \
+            --hidden-import=colorama \
+            --hidden-import=click \
+            --hidden-import=xml.etree.ElementTree \
+            launch_gui.py
+
+      - name: Zip app
+        run: zip -r Citation-Cross-Checker-macOS.zip "dist/Citation-Cross-Checker.app"
+
+      - name: Upload app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Citation-Cross-Checker-macOS
+          path: Citation-Cross-Checker-macOS.zip
