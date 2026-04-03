@@ -432,13 +432,37 @@ GitHub: https://github.com/okiratli/abc
                 )
             self.results_text.insert(tk.END, "\n")
 
+        # Author spelling mismatches
+        if result.author_mismatches:
+            self.insert_bold("POTENTIAL AUTHOR SPELLING MISMATCHES:\n", 'warning')
+            self.results_text.insert(
+                tk.END,
+                "(Citation author name is 1-2 characters different from a bibliography entry)\n",
+                'warning'
+            )
+            for mismatch in result.author_mismatches:
+                bib_key = mismatch.bib_entry.get_key()
+                diff = mismatch.edit_distance
+                self.results_text.insert(
+                    tk.END,
+                    f"  ⚠  Citation: {mismatch.citation.raw_text}\n",
+                    'warning'
+                )
+                self.results_text.insert(
+                    tk.END,
+                    f"      Bibliography: {bib_key} ({diff} character difference)\n",
+                    'warning'
+                )
+            self.results_text.insert(tk.END, "\n")
+
         # Summary
         self.insert_bold("SUMMARY:\n")
         self.results_text.insert(tk.END, f"  Total in-text citations: {len(result.citations)}\n")
         self.results_text.insert(tk.END, f"  Total bibliography entries: {len(result.bib_entries)}\n")
         self.results_text.insert(tk.END, f"  Missing bibliography entries: {len(result.missing_bib_entries)}\n")
         self.results_text.insert(tk.END, f"  Uncited references: {len(result.uncited_references)}\n")
-        self.results_text.insert(tk.END, f"  Potential year mismatches: {len(result.year_mismatches)}\n\n")
+        self.results_text.insert(tk.END, f"  Potential year mismatches: {len(result.year_mismatches)}\n")
+        self.results_text.insert(tk.END, f"  Potential author spelling mismatches: {len(result.author_mismatches)}\n\n")
 
         # Status
         self.insert_bold("Status: ")
