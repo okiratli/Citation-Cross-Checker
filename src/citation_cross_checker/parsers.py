@@ -564,9 +564,15 @@ class BibliographyParser:
                 line
             )
 
-            if is_new_entry and current_entry:
+            # Only start a new entry if the current accumulated entry already
+            # contains a year — otherwise the line is a continuation of a long
+            # multi-author entry that has wrapped onto multiple lines.
+            current_text = ' '.join(current_entry)
+            current_has_year = bool(re.search(r'\b\d{4}\b', current_text))
+
+            if is_new_entry and current_entry and current_has_year:
                 # Process previous entry
-                entry = self._create_author_year_entry(' '.join(current_entry))
+                entry = self._create_author_year_entry(current_text)
                 if entry:
                     entries.append(entry)
                 current_entry = [line]
