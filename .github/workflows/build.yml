@@ -65,6 +65,7 @@ jobs:
           python -m PyInstaller \
             --name="Citation-Cross-Checker" \
             --windowed \
+            --onefile \
             --add-data "src/citation_cross_checker:citation_cross_checker" \
             --hidden-import=tkinter \
             --hidden-import=tkinter.ttk \
@@ -76,6 +77,18 @@ jobs:
             --hidden-import=colorama \
             --hidden-import=click \
             --hidden-import=xml.etree.ElementTree \
+            --exclude-module=matplotlib \
+            --exclude-module=numpy \
+            --exclude-module=pandas \
+            --exclude-module=scipy \
+            --exclude-module=PIL \
+            --exclude-module=IPython \
+            --exclude-module=jupyter \
+            --exclude-module=PyQt5 \
+            --exclude-module=PySide2 \
+            --exclude-module=wx \
+            --exclude-module=test \
+            --exclude-module=unittest \
             launch_gui.py
 
       - name: Zip app
